@@ -9,16 +9,20 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const meta = await fetchQuery(api.automations.getPublishedMeta, { slug });
-  if (!meta) return { title: "App not found" };
-  return {
-    title: meta.name,
-    description: meta.description || `Run ${meta.name} on Floom`,
-    openGraph: {
+  try {
+    const meta = await fetchQuery(api.automations.getPublishedMeta, { slug });
+    if (!meta) return { title: "App not found" };
+    return {
       title: meta.name,
       description: meta.description || `Run ${meta.name} on Floom`,
-    },
-  };
+      openGraph: {
+        title: meta.name,
+        description: meta.description || `Run ${meta.name} on Floom`,
+      },
+    };
+  } catch {
+    return { title: "Floom" };
+  }
 }
 
 export default async function PublishedPage({
