@@ -2,11 +2,22 @@ import { v } from "convex/values";
 import { internalAction, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 
+// --- HTML sanitization ---
+
+/**
+ * Strip <script> and <noscript> blocks to avoid false matches in JS code.
+ */
+function sanitizeHtml(html: string): string {
+  return html
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+    .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, "");
+}
+
 // --- Extraction helpers (pure functions, no dependencies) ---
 
 /**
  * Extract the best logo/favicon URL from HTML.
- * Preference: apple-touch-icon > icon > shortcut icon > /favicon.ico fallback.
+ * Preference: apple-touch-icon > mask-icon > icon > shortcut icon > og:image > /favicon.ico fallback.
  */
 function extractLogo(html: string, baseUrl: string): string | undefined {
   const candidates: { href: string; priority: number }[] = [];
@@ -23,6 +34,8 @@ function extractLogo(html: string, baseUrl: string): string | undefined {
     const href = match[2];
     if (href.startsWith("data:")) continue; // skip data URIs
     if (rel.includes("apple-touch-icon")) {
+      candidates.push({ href, priority: 4 });
+    } else if (rel.includes("mask-icon")) {
       candidates.push({ href, priority: 3 });
     } else if (rel === "icon" || rel.includes("icon")) {
       candidates.push({ href, priority: 2 });
@@ -37,6 +50,8 @@ function extractLogo(html: string, baseUrl: string): string | undefined {
     if (href.startsWith("data:")) continue; // skip data URIs
     const rel = match[2].toLowerCase();
     if (rel.includes("apple-touch-icon")) {
+      candidates.push({ href, priority: 4 });
+    } else if (rel.includes("mask-icon")) {
       candidates.push({ href, priority: 3 });
     } else if (rel === "icon" || rel.includes("icon")) {
       candidates.push({ href, priority: 2 });
@@ -45,8 +60,20 @@ function extractLogo(html: string, baseUrl: string): string | undefined {
     }
   }
 
+  // Fallback: <meta property="og:image"> (many sites use this as a logo-like image)
   if (candidates.length === 0) {
-    // Fallback to /favicon.ico
+    const ogImageRegex =
+      /<meta\s[^>]*property=["']og:image["'][^>]*content=["']([^"']*)["'][^>]*\/?>/i;
+    const ogImageRegexAlt =
+      /<meta\s[^>]*content=["']([^"']*)["'][^>]*property=["']og:image["'][^>]*\/?>/i;
+    const ogImageMatch = ogImageRegex.exec(html) || ogImageRegexAlt.exec(html);
+    if (ogImageMatch && !ogImageMatch[1].startsWith("data:")) {
+      candidates.push({ href: ogImageMatch[1], priority: 0 });
+    }
+  }
+
+  if (candidates.length === 0) {
+    // Final fallback to /favicon.ico
     try {
       return new URL("/favicon.ico", baseUrl).href;
     } catch {
@@ -75,7 +102,8 @@ function extractLogo(html: string, baseUrl: string): string | undefined {
 }
 
 /**
- * Extract brand colors from theme-color meta tag and CSS custom properties.
+ * Extract brand colors from theme-color meta tag, msapplication-TileColor,
+ * color-scheme meta, CSS custom properties, and Tailwind classes.
  */
 function extractColors(html: string): string[] {
   const colors = new Set<string>();
@@ -94,6 +122,40 @@ function extractColors(html: string): string[] {
     if (hexes) hexes.forEach((h) => colors.add(h));
   }
   while ((match = themeColorRegexAlt.exec(html)) !== null) {
+    const val = match[1].trim();
+    const hexes = val.match(hexRegex);
+    if (hexes) hexes.forEach((h) => colors.add(h));
+  }
+
+  // <meta name="msapplication-TileColor" content="...">
+  const tileColorRegex =
+    /<meta\s[^>]*name=["']msapplication-TileColor["'][^>]*content=["']([^"']*)["'][^>]*\/?>/gi;
+  const tileColorRegexAlt =
+    /<meta\s[^>]*content=["']([^"']*)["'][^>]*name=["']msapplication-TileColor["'][^>]*\/?>/gi;
+
+  while ((match = tileColorRegex.exec(html)) !== null) {
+    const val = match[1].trim();
+    const hexes = val.match(hexRegex);
+    if (hexes) hexes.forEach((h) => colors.add(h));
+  }
+  while ((match = tileColorRegexAlt.exec(html)) !== null) {
+    const val = match[1].trim();
+    const hexes = val.match(hexRegex);
+    if (hexes) hexes.forEach((h) => colors.add(h));
+  }
+
+  // <meta name="color-scheme" content="..."> (values like "light", "dark", "light dark")
+  const colorSchemeRegex =
+    /<meta\s[^>]*name=["']color-scheme["'][^>]*content=["']([^"']*)["'][^>]*\/?>/gi;
+  const colorSchemeRegexAlt =
+    /<meta\s[^>]*content=["']([^"']*)["'][^>]*name=["']color-scheme["'][^>]*\/?>/gi;
+
+  while ((match = colorSchemeRegex.exec(html)) !== null) {
+    const val = match[1].trim();
+    const hexes = val.match(hexRegex);
+    if (hexes) hexes.forEach((h) => colors.add(h));
+  }
+  while ((match = colorSchemeRegexAlt.exec(html)) !== null) {
     const val = match[1].trim();
     const hexes = val.match(hexRegex);
     if (hexes) hexes.forEach((h) => colors.add(h));
@@ -127,18 +189,57 @@ function extractColors(html: string): string[] {
     }
   }
 
+  // Tailwind bg-* classes on body/html elements: map common color names to hex
+  const tailwindColorMap: Record<string, string> = {
+    "slate-50": "#f8fafc", "slate-900": "#0f172a",
+    "gray-50": "#f9fafb", "gray-900": "#111827",
+    "zinc-50": "#fafafa", "zinc-900": "#18181b",
+    "neutral-50": "#fafafa", "neutral-900": "#171717",
+    "stone-50": "#fafaf9", "stone-900": "#1c1917",
+    "red-500": "#ef4444", "red-600": "#dc2626",
+    "orange-500": "#f97316", "orange-600": "#ea580c",
+    "amber-500": "#f59e0b", "amber-600": "#d97706",
+    "yellow-500": "#eab308", "yellow-600": "#ca8a04",
+    "lime-500": "#84cc16", "lime-600": "#65a30d",
+    "green-500": "#22c55e", "green-600": "#16a34a",
+    "emerald-500": "#10b981", "emerald-600": "#059669",
+    "teal-500": "#14b8a6", "teal-600": "#0d9488",
+    "cyan-500": "#06b6d4", "cyan-600": "#0891b2",
+    "sky-500": "#0ea5e9", "sky-600": "#0284c7",
+    "blue-500": "#3b82f6", "blue-600": "#2563eb",
+    "indigo-500": "#6366f1", "indigo-600": "#4f46e5",
+    "violet-500": "#8b5cf6", "violet-600": "#7c3aed",
+    "purple-500": "#a855f7", "purple-600": "#9333ea",
+    "fuchsia-500": "#d946ef", "fuchsia-600": "#c026d3",
+    "pink-500": "#ec4899", "pink-600": "#db2777",
+    "rose-500": "#f43f5e", "rose-600": "#e11d48",
+    "white": "#ffffff", "black": "#000000",
+  };
+  const bodyHtmlTagRegex = /<(?:body|html)\s[^>]*class=["']([^"']*)["'][^>]*>/gi;
+  while ((match = bodyHtmlTagRegex.exec(html)) !== null) {
+    const classes = match[1];
+    const bgClassRegex = /\bbg-([\w-]+)\b/g;
+    let bgMatch;
+    while ((bgMatch = bgClassRegex.exec(classes)) !== null) {
+      const colorName = bgMatch[1];
+      if (tailwindColorMap[colorName]) {
+        colors.add(tailwindColorMap[colorName]);
+      }
+    }
+  }
+
   return Array.from(colors);
 }
 
 /**
- * Extract font family names from Google Fonts links and inline CSS.
+ * Extract font family names from Google Fonts links, Typekit/Adobe Fonts links,
+ * @font-face declarations, and inline CSS.
  */
 function extractFonts(html: string): string[] {
   const fonts = new Set<string>();
 
   // Google Fonts URLs: parse family parameter
-  const gfRegex =
-    /fonts\.googleapis\.com\/css2?\?[^"'\s>]*/gi;
+  const gfRegex = /fonts\.googleapis\.com\/css2?\?[^"'\s>]*/gi;
   let match;
   while ((match = gfRegex.exec(html)) !== null) {
     const url = match[0];
@@ -151,11 +252,31 @@ function extractFonts(html: string): string[] {
     }
   }
 
-  // Inline <style> blocks: font-family on body/html selectors
+  // Typekit / Adobe Fonts: detect use.typekit.net links
+  const typekitRegex = /use\.typekit\.net\/([a-z0-9]+)\.css/gi;
+  while ((match = typekitRegex.exec(html)) !== null) {
+    // We can't resolve the kit ID to font names without an API call,
+    // but record the presence so callers know Typekit is in use.
+    fonts.add(`typekit:${match[1]}`);
+  }
+
+  // Inline <style> blocks
   const styleRegex = /<style[^>]*>([\s\S]*?)<\/style>/gi;
   while ((match = styleRegex.exec(html)) !== null) {
     const styleContent = match[1];
-    // Match body/html/root font-family declarations
+
+    // @font-face declarations: extract font-family name
+    const fontFaceRegex =
+      /@font-face\s*\{[^}]*font-family\s*:\s*["']?([^;"'}\n]+)["']?/gi;
+    let ffaceMatch;
+    while ((ffaceMatch = fontFaceRegex.exec(styleContent)) !== null) {
+      const name = ffaceMatch[1].trim();
+      if (name && !name.startsWith("-")) {
+        fonts.add(name);
+      }
+    }
+
+    // body/html/root font-family declarations
     const ffRegex =
       /(?:body|html|:root)\s*\{[^}]*font-family\s*:\s*([^;]+)/gi;
     let ffMatch;
@@ -175,7 +296,8 @@ function extractFonts(html: string): string[] {
 
 /**
  * Extract company name and description from meta tags.
- * Preference: og:site_name > <title> for name; og:description > description for desc.
+ * Preference: og:site_name > application-name > og:title > <title> for name;
+ * og:description > description for desc.
  */
 function extractMeta(html: string): {
   name: string | undefined;
@@ -185,6 +307,8 @@ function extractMeta(html: string): {
   let metaDescription: string | undefined;
   let ogSiteName: string | undefined;
   let ogDescription: string | undefined;
+  let applicationName: string | undefined;
+  let ogTitle: string | undefined;
 
   // <title>
   const titleMatch = /<title[^>]*>([^<]*)<\/title>/i.exec(html);
@@ -212,6 +336,26 @@ function extractMeta(html: string): {
     ogSiteName = ogNameMatch[1].trim();
   }
 
+  // <meta name="application-name" content="...">
+  const appNameRegex =
+    /<meta\s[^>]*name=["']application-name["'][^>]*content=["']([^"']*)["'][^>]*\/?>/i;
+  const appNameRegexAlt =
+    /<meta\s[^>]*content=["']([^"']*)["'][^>]*name=["']application-name["'][^>]*\/?>/i;
+  const appNameMatch = appNameRegex.exec(html) || appNameRegexAlt.exec(html);
+  if (appNameMatch) {
+    applicationName = appNameMatch[1].trim();
+  }
+
+  // <meta property="og:title" content="...">
+  const ogTitleRegex =
+    /<meta\s[^>]*property=["']og:title["'][^>]*content=["']([^"']*)["'][^>]*\/?>/i;
+  const ogTitleRegexAlt =
+    /<meta\s[^>]*content=["']([^"']*)["'][^>]*property=["']og:title["'][^>]*\/?>/i;
+  const ogTitleMatch = ogTitleRegex.exec(html) || ogTitleRegexAlt.exec(html);
+  if (ogTitleMatch) {
+    ogTitle = ogTitleMatch[1].trim();
+  }
+
   // <meta property="og:description" content="...">
   const ogDescRegex =
     /<meta\s[^>]*property=["']og:description["'][^>]*content=["']([^"']*)["'][^>]*\/?>/i;
@@ -223,7 +367,7 @@ function extractMeta(html: string): {
   }
 
   return {
-    name: ogSiteName || title || undefined,
+    name: ogSiteName || applicationName || ogTitle || title || undefined,
     description: ogDescription || metaDescription || undefined,
   };
 }
@@ -281,10 +425,53 @@ export const scrapeWorkspaceUrl = internalAction({
       return;
     }
 
-    const logoUrl = extractLogo(html, baseUrl);
-    const brandColors = extractColors(html);
-    const fonts = extractFonts(html);
-    const meta = extractMeta(html);
+    // Sanitize HTML: strip <script> and <noscript> blocks to avoid false matches
+    const cleanHtml = sanitizeHtml(html);
+
+    // Run each extractor independently; one failure must not kill the others
+    let logoUrl: string | undefined;
+    let brandColors: string[] = [];
+    let fonts: string[] = [];
+    let meta: { name: string | undefined; description: string | undefined } = {
+      name: undefined,
+      description: undefined,
+    };
+
+    try {
+      logoUrl = extractLogo(cleanHtml, baseUrl);
+    } catch (error) {
+      console.error(
+        "Scraper: extractLogo failed:",
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+
+    try {
+      brandColors = extractColors(cleanHtml);
+    } catch (error) {
+      console.error(
+        "Scraper: extractColors failed:",
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+
+    try {
+      fonts = extractFonts(cleanHtml);
+    } catch (error) {
+      console.error(
+        "Scraper: extractFonts failed:",
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+
+    try {
+      meta = extractMeta(cleanHtml);
+    } catch (error) {
+      console.error(
+        "Scraper: extractMeta failed:",
+        error instanceof Error ? error.message : String(error)
+      );
+    }
 
     await ctx.runMutation(internal.scraper.updateWorkspaceBranding, {
       orgId,
