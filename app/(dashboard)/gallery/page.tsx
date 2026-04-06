@@ -80,20 +80,19 @@ export default function GalleryPage() {
       <div className="max-w-6xl mx-auto w-full px-4 py-6 flex-1">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-lg font-semibold text-gray-900">
-            Workspace Automations
-          </h1>
-          <Button
-            variant="outline"
-            onClick={() => setPaletteOpen(true)}
-            className="w-64 justify-start gap-2 text-muted-foreground font-normal"
-          >
-            <Search size={14} />
-            <span className="flex-1 text-left">Search automations...</span>
-            <kbd className="flex items-center gap-0.5 px-1.5 py-0.5 bg-muted rounded text-[11px] font-medium text-muted-foreground border border-border">
-              <CommandIcon size={11} />K
-            </kbd>
-          </Button>
+          {automations && automations.length > 0 && (
+            <Button
+              variant="outline"
+              onClick={() => setPaletteOpen(true)}
+              className="w-64 justify-start gap-2 text-muted-foreground font-normal"
+            >
+              <Search size={14} />
+              <span className="flex-1 text-left">Search automations...</span>
+              <kbd className="flex items-center gap-0.5 px-1.5 py-0.5 bg-muted rounded text-[11px] font-medium text-muted-foreground border border-border">
+                <CommandIcon size={11} />K
+              </kbd>
+            </Button>
+          )}
         </div>
 
         {/* Loading */}
@@ -287,7 +286,8 @@ function formatRelativeTime(ts: number): string {
 // --- Install Skill Empty State ---
 
 function InstallSkillEmptyState() {
-  const installCommand = "Install floom.dev";
+  const installCommand =
+    "git clone https://github.com/floomhq/floom.git ~/.claude/skills/floom-repo && ~/.claude/skills/floom-repo/scripts/setup";
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(() => {
@@ -297,34 +297,38 @@ function InstallSkillEmptyState() {
   }, []);
 
   return (
-    <div className="max-w-md w-full">
-      <div className="flex flex-col items-center mb-6">
-        <div className="size-12 rounded-xl bg-muted flex items-center justify-center mb-4">
-          <Terminal size={24} className="text-muted-foreground" />
+    <div className="max-w-lg w-full">
+      <div className="flex flex-col items-center mb-8">
+        <div className="size-14 rounded-2xl bg-foreground flex items-center justify-center mb-5 shadow-sm">
+          <Terminal size={26} className="text-background" />
         </div>
-        <h3 className="text-foreground font-semibold text-base">
+        <h3 className="text-foreground font-semibold text-lg mb-1">
           Get started with Floom
         </h3>
-        <p className="text-muted-foreground text-sm mt-1 text-center">
-          Install the Floom skill in Claude Code to deploy your first
-          automation.
+        <p className="text-sm text-muted-foreground text-center">
+          Deploy Python scripts to the cloud in two steps.
         </p>
       </div>
 
-      {/* Step 1 */}
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            Step 1 — Paste this into your Claude Code:
-          </p>
-          <div className="flex items-center gap-2 bg-muted/50 border rounded-lg px-3 py-2.5">
-            <code className="flex-1 text-sm font-mono text-foreground select-all">
+      <div className="space-y-5">
+        {/* Step 1 */}
+        <div className="space-y-2.5">
+          <div className="flex items-center gap-2.5">
+            <span className="flex items-center justify-center size-5 rounded-full bg-foreground text-background text-[11px] font-semibold shrink-0">
+              1
+            </span>
+            <p className="text-sm font-medium text-foreground">
+              Install the Claude Code skill
+            </p>
+          </div>
+          <div className="ml-[30px] flex items-start gap-2 bg-muted/60 border rounded-lg p-3">
+            <code className="flex-1 text-[13px] font-mono text-foreground leading-relaxed break-all select-all">
               {installCommand}
             </code>
             <Button
               variant="ghost"
               size="icon"
-              className="size-8 shrink-0"
+              className="size-7 shrink-0 mt-0.5"
               onClick={(e) => {
                 e.stopPropagation();
                 handleCopy();
@@ -337,19 +341,27 @@ function InstallSkillEmptyState() {
               )}
             </Button>
           </div>
+          <p className="ml-[30px] text-xs text-muted-foreground">
+            Paste this into your terminal to install the skill.
+          </p>
         </div>
 
         {/* Step 2 */}
-        <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            Step 2 — Deploy with skill
-          </p>
-          <p className="text-sm text-muted-foreground">
+        <div className="space-y-2.5">
+          <div className="flex items-center gap-2.5">
+            <span className="flex items-center justify-center size-5 rounded-full bg-foreground text-background text-[11px] font-semibold shrink-0">
+              2
+            </span>
+            <p className="text-sm font-medium text-foreground">
+              Deploy your Python script
+            </p>
+          </div>
+          <p className="ml-[30px] text-sm text-muted-foreground leading-relaxed">
             Open Claude Code in your project and run{" "}
-            <code className="px-1.5 py-0.5 bg-muted rounded text-foreground text-xs font-mono">
+            <code className="px-1.5 py-0.5 bg-foreground/10 rounded text-foreground text-xs font-mono font-semibold">
               /floom
             </code>{" "}
-            to deploy your Python script.
+            to deploy your script to the cloud.
           </p>
         </div>
       </div>
