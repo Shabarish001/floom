@@ -67,33 +67,33 @@ export function RunHistory({
         {displayed.map((run) => (
           <Card key={run._id} size="sm" className="py-0 gap-0">
             <div
-              className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-muted/50 text-sm transition-colors"
+              className="flex items-center gap-2 sm:gap-3 px-3 py-2 cursor-pointer hover:bg-muted/50 text-sm transition-colors overflow-x-auto"
               onClick={() => {
                 onSelectRun(run._id);
                 setExpanded(expanded === run._id ? null : run._id);
               }}
             >
               <StatusDot status={run.status} />
-              <span className="text-muted-foreground text-xs w-32 shrink-0">
+              <span className="text-muted-foreground text-xs shrink-0 hidden sm:inline w-32">
                 {formatDate(run.startedAt)}
               </span>
-              <Badge variant="secondary">v{run.version}</Badge>
-              <span className="text-xs text-muted-foreground flex-1">
+              <Badge variant="secondary" className="shrink-0">v{run.version}</Badge>
+              <span className="text-xs text-muted-foreground flex-1 truncate">
                 {run.triggeredBy === "published"
                   ? "public link"
                   : run.triggeredBy}
               </span>
               {run.durationMs != null && (
-                <span className="text-xs text-muted-foreground/60">
+                <span className="text-xs text-muted-foreground/60 shrink-0 hidden sm:inline">
                   {run.durationMs < 1000
                     ? `${run.durationMs}ms`
                     : `${(run.durationMs / 1000).toFixed(1)}s`}
                 </span>
               )}
               {expanded === run._id ? (
-                <ChevronUp className="size-3.5 text-muted-foreground" />
+                <ChevronUp className="size-3.5 text-muted-foreground shrink-0" />
               ) : (
-                <ChevronDown className="size-3.5 text-muted-foreground" />
+                <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
               )}
             </div>
 

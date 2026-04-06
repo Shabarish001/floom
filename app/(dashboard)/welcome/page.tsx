@@ -100,7 +100,7 @@ export default function WelcomePage() {
       <div className="w-full max-w-lg space-y-8">
         {/* Header */}
         <div className="text-center space-y-2">
-          <h1 className="text-2xl font-semibold text-gray-900">
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
             Welcome to Floom
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -116,8 +116,8 @@ export default function WelcomePage() {
               <span className="font-medium">API Key</span>
             </div>
             {/* eslint-disable-next-line react/no-unknown-property */}
-            <div className="flex items-center gap-2" data-sensitive="true">
-              <code className="flex-1 text-sm font-mono bg-muted px-3 py-2 rounded-lg truncate select-all">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2" data-sensitive="true">
+              <code className="flex-1 text-xs sm:text-sm font-mono bg-muted px-3 py-2 rounded-lg truncate select-all min-w-0 overflow-x-auto">
                 {rawKey}
               </code>
               <Button
@@ -141,9 +141,9 @@ export default function WelcomePage() {
           <h2 className="text-sm font-medium text-gray-900">Quick start</h2>
 
           {/* Deploy command */}
-          <div className="flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2.5">
+          <div className="flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2.5 min-w-0 overflow-x-auto">
             <Terminal className="size-3.5 text-muted-foreground shrink-0" />
-            <code className="flex-1 text-xs font-mono text-foreground truncate">
+            <code className="flex-1 text-xs font-mono text-foreground whitespace-nowrap">
               npx floom deploy
             </code>
             <button
@@ -163,9 +163,9 @@ export default function WelcomePage() {
             <p className="text-xs text-muted-foreground">
               Or install the Claude Code skill:
             </p>
-            <div className="flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2.5">
+            <div className="flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2.5 min-w-0 overflow-x-auto">
               <Terminal className="size-3.5 text-muted-foreground shrink-0" />
-              <code className="flex-1 text-xs font-mono text-foreground truncate">
+              <code className="flex-1 text-xs font-mono text-foreground whitespace-nowrap">
                 {installCommand}
               </code>
               <button

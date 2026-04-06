@@ -78,7 +78,7 @@ export function AutomationListRow({
           router.push(`/a/${automation._id}`);
         }
       }}
-      className="group flex items-center gap-4 px-4 py-3 rounded-lg cursor-pointer hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group flex items-center gap-2 sm:gap-4 px-3 sm:px-4 py-3 rounded-lg cursor-pointer hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {/* Status + Name */}
       <div className="flex items-center gap-3 min-w-0 flex-1">

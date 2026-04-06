@@ -181,7 +181,7 @@ export default function PublishedClient({ slug }: { slug: string }) {
       <div className="flex items-center gap-3">
         <AppIcon name={data.name} size="lg" className="shrink-0" />
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">{data.name}</h1>
+          <h1 className="text-xl sm:text-2xl font-semibold text-foreground">{data.name}</h1>
           <p className="text-sm text-muted-foreground mt-1">{data.description}</p>
         </div>
       </div>

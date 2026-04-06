@@ -191,7 +191,8 @@ export default function SecretsPage() {
 
             {/* Secrets table */}
             {secrets !== undefined && secrets.length > 0 && (
-              <Table className="table-fixed">
+              <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <Table className="table-fixed min-w-[500px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[200px]">Name</TableHead>
@@ -337,6 +338,7 @@ export default function SecretsPage() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -348,7 +350,7 @@ export default function SecretsPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleAdd} className="space-y-3">
-              <div className="flex items-end gap-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-2">
                 <div className="flex-1 space-y-1.5">
                   <Label htmlFor="secret-name">Name</Label>
                   <Input
@@ -373,6 +375,7 @@ export default function SecretsPage() {
                 <Button
                   type="submit"
                   disabled={saving || !name.trim() || !value.trim()}
+                  className="shrink-0"
                 >
                   {saving ? "Saving..." : "Add"}
                 </Button>
