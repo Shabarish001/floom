@@ -53,7 +53,9 @@ export const needsOnboarding = query({
       .withIndex("by_clerkOrgId", (q) => q.eq("clerkOrgId", clerkOrgId))
       .unique();
 
-    if (!org) return false;
+    // Org not yet created by UserSync — return null to signal "still loading"
+    // so the client doesn't prematurely skip the redirect.
+    if (!org) return null;
 
     return !org.onboardingComplete;
   },

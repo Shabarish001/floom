@@ -37,7 +37,7 @@ function OnboardingRedirect() {
   );
 
   useEffect(() => {
-    if (needsOnboarding === undefined) return; // loading
+    if (needsOnboarding === undefined || needsOnboarding === null) return; // loading or org not yet created
     if (!needsOnboarding) return; // already onboarded
 
     // Don't redirect if already on onboarding, sign-in, or sign-up pages
