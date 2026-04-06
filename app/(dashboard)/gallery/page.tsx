@@ -122,6 +122,19 @@ export default function GalleryPage() {
         )}
 
         {/* Starter templates — shown when user has 0 apps */}
+        {showTemplates && templates === undefined && (
+          <div>
+            <div className="mb-4">
+              <Skeleton className="h-4 w-56 rounded" />
+              <Skeleton className="h-3 w-72 rounded mt-2" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-48 rounded-xl" />
+              ))}
+            </div>
+          </div>
+        )}
         {showTemplates && templates && (
           <div>
             <div className="mb-4">
