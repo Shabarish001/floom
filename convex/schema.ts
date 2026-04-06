@@ -113,6 +113,7 @@ export default defineSchema({
     name: v.string(),
     createdAt: v.number(),
     createdBy: v.string(),
+    // Workspace branding fields (populated by URL scraper, issue #17)
     websiteUrl: v.optional(v.string()),
     logoUrl: v.optional(v.string()),
     brandColors: v.optional(v.array(v.string())),
