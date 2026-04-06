@@ -8,12 +8,19 @@ import { useEffect, useRef, useState } from "react";
    Adapted from floomhq/floom-deprecated (light mode, no waitlist)
    ═══════════════════════════════════════════════════════════════ */
 
-const PLACEHOLDER_CODE = `# app.py — paste AI-generated code here
-from floom import app
+const PLACEHOLDER_CODE = `# summarize.py — deploy with /floom
+import os, requests
+from anthropic import Anthropic
 
-@app.action
-def summarize_url(url: str, style: str = "bullets"):
-    return {"summary": "...", "points": [...]}`;
+def run(url: str, style: str = "bullets") -> dict:
+    page = requests.get(url).text[:4000]
+    msg = Anthropic().messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=1024,
+        messages=[{"role": "user",
+            "content": f"Summarize as {style}:\\n{page}"}],
+    )
+    return {"summary": msg.content[0].text}`;
 
 export default function MarketingPage() {
   const revealRef = useRef<boolean>(false);
@@ -290,7 +297,7 @@ export default function MarketingPage() {
                   fontFamily: "var(--font-mono), 'JetBrains Mono', monospace",
                 }}
               >
-                app.py → floom.dev
+                summarize.py → floom.dev
               </span>
             </div>
 
@@ -305,28 +312,27 @@ export default function MarketingPage() {
             >
               <div>
                 <span style={{ color: "var(--floom-code-comment)" }}>
-                  # app.py &mdash; paste AI-generated code here
+                  # summarize.py &mdash; deploy with /floom
                 </span>
+              </div>
+              <div>
+                <span style={{ color: "var(--floom-code-keyword)" }}>import</span>
+                <span style={{ color: "var(--floom-text)" }}> os, requests</span>
               </div>
               <div>
                 <span style={{ color: "var(--floom-code-keyword)" }}>from</span>
-                <span style={{ color: "var(--floom-text)" }}> floom </span>
+                <span style={{ color: "var(--floom-text)" }}> anthropic </span>
                 <span style={{ color: "var(--floom-code-keyword)" }}>
                   import
                 </span>
-                <span style={{ color: "var(--floom-text)" }}> app</span>
+                <span style={{ color: "var(--floom-text)" }}> Anthropic</span>
               </div>
               <div>&nbsp;</div>
-              <div>
-                <span style={{ color: "var(--floom-code-decorator)" }}>
-                  @app.action
-                </span>
-              </div>
               <div>
                 <span style={{ color: "var(--floom-code-keyword)" }}>def</span>
                 <span style={{ color: "var(--floom-text)" }}> </span>
                 <span style={{ color: "var(--floom-code-fn)" }}>
-                  summarize_url
+                  run
                 </span>
                 <span style={{ color: "var(--floom-text-secondary)" }}>
                   (url: str, style: str ={" "}
@@ -334,28 +340,33 @@ export default function MarketingPage() {
                 <span style={{ color: "var(--floom-code-string)" }}>
                   &quot;bullets&quot;
                 </span>
-                <span style={{ color: "var(--floom-text-secondary)" }}>):</span>
+                <span style={{ color: "var(--floom-text-secondary)" }}>
+                  ) -&gt; dict:
+                </span>
               </div>
               <div>
                 <span style={{ color: "var(--floom-text-secondary)" }}>
-                  {"    "}return{" "}
+                  {"    "}page = requests.get(url).text[:4000]
                 </span>
+              </div>
+              <div>
                 <span style={{ color: "var(--floom-text-secondary)" }}>
-                  {"{"}
+                  {"    "}msg = Anthropic().messages.create(...)
+                </span>
+              </div>
+              <div>
+                <span style={{ color: "var(--floom-text-secondary)" }}>
+                  {"    "}
+                </span>
+                <span style={{ color: "var(--floom-code-keyword)" }}>return</span>
+                <span style={{ color: "var(--floom-text-secondary)" }}>
+                  {" {"}
                 </span>
                 <span style={{ color: "var(--floom-code-string)" }}>
                   &quot;summary&quot;
                 </span>
-                <span style={{ color: "var(--floom-text-secondary)" }}>: </span>
-                <span style={{ color: "var(--floom-code-string)" }}>
-                  &quot;...&quot;
-                </span>
-                <span style={{ color: "var(--floom-text-secondary)" }}>, </span>
-                <span style={{ color: "var(--floom-code-string)" }}>
-                  &quot;points&quot;
-                </span>
                 <span style={{ color: "var(--floom-text-secondary)" }}>
-                  : [...]{"}"}
+                  : msg.content[0].text{"}"}
                 </span>
               </div>
             </div>
