@@ -1,8 +1,18 @@
 "use client";
 
-import { useState } from "react";
+// Onboarding flow:
+// 1. User signs up via Clerk
+// 2. UserSync (ConvexClientProvider) creates org record in Convex
+// 3. needsOnboarding query returns true (onboardingComplete is unset)
+// 4. OnboardingRedirect sends user here
+// 5. User enters website URL (or skips)
+// 6. completeOnboarding mutation sets onboardingComplete = true
+// 7. Redirect to /gallery (or /welcome once #12 is merged)
+
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
+import { useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +24,22 @@ export default function OnboardingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const { isAuthenticated } = useConvexAuth();
   const completeOnboarding = useMutation(api.organizations.completeOnboarding);
+
+  // Guard: if user is already onboarded, redirect away from /onboarding
+  const needsOnboarding = useQuery(
+    api.organizations.needsOnboarding,
+    isAuthenticated ? {} : "skip"
+  );
+
+  useEffect(() => {
+    // Only redirect when we have a definitive "false" (onboarded).
+    // undefined = loading, null = org not yet created — both should wait.
+    if (needsOnboarding === false) {
+      router.replace("/gallery");
+    }
+  }, [needsOnboarding, router]);
 
   function normalizeUrl(input: string): string {
     const trimmed = input.trim();

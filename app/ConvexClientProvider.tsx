@@ -26,6 +26,13 @@ function UserSync() {
 }
 
 // Redirects new users to /onboarding if their workspace setup is incomplete.
+//
+// Race condition protection: UserSync (above) creates the org via mutation, but
+// needsOnboarding is a query that may resolve before the mutation commits.
+// When the org doesn't exist yet, needsOnboarding returns `null` (not true/false),
+// and this effect treats null the same as `undefined` (loading) — it does nothing.
+// Once UserSync's mutation commits, Convex reactivity re-fires the query, which
+// then returns true or false and the redirect logic proceeds safely.
 function OnboardingRedirect() {
   const { isAuthenticated } = useConvexAuth();
   const pathname = usePathname();
@@ -37,7 +44,7 @@ function OnboardingRedirect() {
   );
 
   useEffect(() => {
-    if (needsOnboarding === undefined || needsOnboarding === null) return; // loading or org not yet created
+    if (needsOnboarding === undefined || needsOnboarding === null) return; // loading or org not yet created by UserSync
     if (!needsOnboarding) return; // already onboarded
 
     // Don't redirect if already on onboarding, sign-in, or sign-up pages
