@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
+import { useUser } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -10,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 export default function WelcomePage() {
+  const { user } = useUser();
   const router = useRouter();
   const [orgId, setOrgId] = useState<Id<"organizations"> | null>(null);
   const [rawKey, setRawKey] = useState<string | null>(null);
@@ -33,12 +35,13 @@ export default function WelcomePage() {
 
   // Resolve orgId on mount
   useEffect(() => {
-    upsertUser({ email: "" })
+    if (!user) return;
+    upsertUser({ email: user.primaryEmailAddress?.emailAddress ?? "" })
       .then((result) => {
         if (result?.orgId) setOrgId(result.orgId);
       })
       .catch(() => {});
-  }, [upsertUser]);
+  }, [upsertUser, user]);
 
   // If returning user already has keys, redirect to gallery
   useEffect(() => {
