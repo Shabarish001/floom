@@ -2,12 +2,15 @@
 
 import { useQuery, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import {
   Search,
   Box,
+  Copy,
+  Check,
+  Terminal,
   ArrowRight,
   Clock,
   CheckCircle2,
@@ -103,41 +106,27 @@ export default function GalleryPage() {
         )}
 
         {/* Empty state */}
-        {filtered !== undefined && filtered.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Box size={40} className="text-gray-200 mb-4" />
-            {query ? (
-              <>
-                <p className="text-muted-foreground text-sm">
-                  No automations match &ldquo;{query}&rdquo;.
-                </p>
-                <Button
-                  variant="link"
-                  onClick={() => setQuery("")}
-                  className="mt-2"
-                >
-                  Clear search
-                </Button>
-              </>
-            ) : (
-              <>
-                <p className="text-foreground font-medium text-sm">
-                  No automations in your workspace yet
-                </p>
-                <p className="text-muted-foreground text-xs mt-1 max-w-xs">
-                  Deploy your first automation with the Floom CLI, then make it
-                  public to share with your team.
-                </p>
-                <a
-                  href="https://github.com/floom"
-                  className={cn(buttonVariants({ variant: "link" }), "mt-3")}
-                >
-                  Learn how to deploy
-                </a>
-              </>
-            )}
-          </div>
-        )}
+        {filtered !== undefined &&
+          filtered.length === 0 &&
+          (query ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Box size={40} className="text-gray-200 mb-4" />
+              <p className="text-muted-foreground text-sm">
+                No automations match &ldquo;{query}&rdquo;.
+              </p>
+              <Button
+                variant="link"
+                onClick={() => setQuery("")}
+                className="mt-2"
+              >
+                Clear search
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16">
+              <InstallSkillEmptyState />
+            </div>
+          ))}
 
         {/* Cards grid */}
         {filtered !== undefined && filtered.length > 0 && (
@@ -211,15 +200,21 @@ export default function GalleryPage() {
           <CommandSeparator />
           <div className="flex items-center gap-4 px-3 py-2 text-[11px] text-muted-foreground/60">
             <span>
-              <kbd className="px-1 py-0.5 bg-muted rounded border text-[10px] mr-1">↑↓</kbd>
+              <kbd className="px-1 py-0.5 bg-muted rounded border text-[10px] mr-1">
+                ↑↓
+              </kbd>
               navigate
             </span>
             <span>
-              <kbd className="px-1 py-0.5 bg-muted rounded border text-[10px] mr-1">↵</kbd>
+              <kbd className="px-1 py-0.5 bg-muted rounded border text-[10px] mr-1">
+                ↵
+              </kbd>
               open
             </span>
             <span>
-              <kbd className="px-1 py-0.5 bg-muted rounded border text-[10px] mr-1">esc</kbd>
+              <kbd className="px-1 py-0.5 bg-muted rounded border text-[10px] mr-1">
+                esc
+              </kbd>
               close
             </span>
           </div>
@@ -287,6 +282,79 @@ function formatRelativeTime(ts: number): string {
   if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
   if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
   return `${Math.floor(diff / 86_400_000)}d ago`;
+}
+
+// --- Install Skill Empty State ---
+
+function InstallSkillEmptyState() {
+  const installCommand = "Install floom.dev";
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(installCommand);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, []);
+
+  return (
+    <div className="max-w-md w-full">
+      <div className="flex flex-col items-center mb-6">
+        <div className="size-12 rounded-xl bg-muted flex items-center justify-center mb-4">
+          <Terminal size={24} className="text-muted-foreground" />
+        </div>
+        <h3 className="text-foreground font-semibold text-base">
+          Get started with Floom
+        </h3>
+        <p className="text-muted-foreground text-sm mt-1 text-center">
+          Install the Floom skill in Claude Code to deploy your first
+          automation.
+        </p>
+      </div>
+
+      {/* Step 1 */}
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            Step 1 — Paste this into your Claude Code:
+          </p>
+          <div className="flex items-center gap-2 bg-muted/50 border rounded-lg px-3 py-2.5">
+            <code className="flex-1 text-sm font-mono text-foreground select-all">
+              {installCommand}
+            </code>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8 shrink-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCopy();
+              }}
+            >
+              {copied ? (
+                <Check size={14} className="text-green-500" />
+              ) : (
+                <Copy size={14} />
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {/* Step 2 */}
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            Step 2 — Deploy with skill
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Open Claude Code in your project and run{" "}
+            <code className="px-1.5 py-0.5 bg-muted rounded text-foreground text-xs font-mono">
+              /floom
+            </code>{" "}
+            to deploy your Python script.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // --- AutomationCard ---
