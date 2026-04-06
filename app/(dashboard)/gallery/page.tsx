@@ -14,9 +14,11 @@ import {
   XCircle,
   Loader2,
   Command as CommandIcon,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getLabelColor } from "@/lib/label-colors";
+import { getLabelColor, LABEL_COLORS } from "@/lib/label-colors";
 import {
   Card,
   CardHeader,
@@ -37,13 +39,29 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { TemplateCard } from "@/components/TemplateCard";
+import { AutomationListRow } from "@/components/AutomationListRow";
+
+const STORAGE_KEY_VIEW = "floom-gallery-view";
 
 export default function GalleryPage() {
   const [query, setQuery] = useState("");
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [deployingSlug, setDeployingSlug] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem(STORAGE_KEY_VIEW);
+      if (stored === "grid" || stored === "list") return stored;
+    }
+    return "grid";
+  });
+  const [activeLabel, setActiveLabel] = useState<string | null>(null);
   const router = useRouter();
   const { isAuthenticated } = useConvexAuth();
+
+  function handleViewChange(mode: "grid" | "list") {
+    setViewMode(mode);
+    localStorage.setItem(STORAGE_KEY_VIEW, mode);
+  }
 
   const automations = useQuery(
     api.automations.list,
@@ -67,7 +85,8 @@ export default function GalleryPage() {
   const showTemplates =
     automations !== undefined && automations.length === 0 && !query;
 
-  const filtered = automations?.filter((a: Automation) => {
+  // Filter by search query
+  const searchFiltered = automations?.filter((a: Automation) => {
     if (query) {
       const q = query.toLowerCase();
       return (
@@ -77,6 +96,19 @@ export default function GalleryPage() {
     }
     return true;
   });
+
+  // Filter by label (client-side)
+  const filtered = searchFiltered?.filter((a: Automation) => {
+    if (!activeLabel) return true;
+    return a.labels?.includes(activeLabel) ?? false;
+  });
+
+  // Collect all labels that exist across automations for the filter bar
+  const allLabels = automations
+    ? Array.from(
+        new Set(automations.flatMap((a: Automation) => a.labels ?? []))
+      ).sort()
+    : [];
 
   // Command+K listener
   useEffect(() => {
@@ -96,8 +128,36 @@ export default function GalleryPage() {
 
       <div className="max-w-6xl mx-auto w-full px-4 py-6 flex-1">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          {automations && automations.length > 0 && (
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            {/* View toggle */}
+            <div className="flex items-center rounded-lg border border-border p-0.5">
+              <button
+                onClick={() => handleViewChange("grid")}
+                className={cn(
+                  "flex items-center justify-center size-7 rounded-md transition-colors",
+                  viewMode === "grid"
+                    ? "bg-muted text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+                aria-label="Grid view"
+              >
+                <LayoutGrid size={14} />
+              </button>
+              <button
+                onClick={() => handleViewChange("list")}
+                className={cn(
+                  "flex items-center justify-center size-7 rounded-md transition-colors",
+                  viewMode === "list"
+                    ? "bg-muted text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+                aria-label="List view"
+              >
+                <List size={14} />
+              </button>
+            </div>
+
             <Button
               variant="outline"
               onClick={() => setPaletteOpen(true)}
@@ -109,8 +169,47 @@ export default function GalleryPage() {
                 <CommandIcon size={11} />K
               </kbd>
             </Button>
-          )}
+          </div>
         </div>
+
+        {/* Label filter bar */}
+        {allLabels.length > 0 && (
+          <div className="flex items-center gap-1.5 mb-4 overflow-x-auto pb-1 scrollbar-none">
+            <button
+              onClick={() => setActiveLabel(null)}
+              className={cn(
+                "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-colors whitespace-nowrap",
+                activeLabel === null
+                  ? "bg-foreground text-background"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              )}
+            >
+              All
+            </button>
+            {allLabels.map((label) => {
+              const colors = LABEL_COLORS[label] ?? LABEL_COLORS._default;
+              const isActive = activeLabel === label;
+              return (
+                <button
+                  key={label}
+                  onClick={() =>
+                    setActiveLabel(isActive ? null : label)
+                  }
+                  className={cn(
+                    "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-colors whitespace-nowrap",
+                    isActive
+                      ? "ring-2 ring-foreground/20"
+                      : "hover:ring-1 hover:ring-foreground/10",
+                    colors.bg,
+                    colors.text
+                  )}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Loading */}
         {automations === undefined && (
@@ -162,31 +261,52 @@ export default function GalleryPage() {
           </div>
         )}
 
-        {/* Search empty state — only when searching returns no results */}
-        {filtered !== undefined && filtered.length === 0 && query && (
+        {/* Search/filter empty state — only when searching/filtering returns no results */}
+        {filtered !== undefined && filtered.length === 0 && (query || activeLabel) && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Box size={40} className="text-gray-200 mb-4" />
             <p className="text-muted-foreground text-sm">
-              No apps match &ldquo;{query}&rdquo;.
+              No apps match{" "}
+              {query && <>&ldquo;{query}&rdquo;</>}
+              {query && activeLabel && " with label "}
+              {activeLabel && (
+                <span className="font-medium">{activeLabel}</span>
+              )}
+              .
             </p>
             <Button
               variant="link"
-              onClick={() => setQuery("")}
+              onClick={() => {
+                setQuery("");
+                setActiveLabel(null);
+              }}
               className="mt-2"
             >
-              Clear search
+              Clear filters
             </Button>
           </div>
         )}
 
-        {/* Cards grid */}
-        {filtered !== undefined && filtered.length > 0 && (
+        {/* Grid view */}
+        {filtered !== undefined && filtered.length > 0 && viewMode === "grid" && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((automation: Automation) => (
               <AutomationCard
                 key={automation._id}
                 automation={automation}
                 href={`/a/${automation._id}`}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* List view */}
+        {filtered !== undefined && filtered.length > 0 && viewMode === "list" && (
+          <div className="flex flex-col divide-y divide-border rounded-xl border border-border overflow-hidden">
+            {filtered.map((automation: Automation) => (
+              <AutomationListRow
+                key={automation._id}
+                automation={automation}
               />
             ))}
           </div>
@@ -402,14 +522,14 @@ function AutomationCard({
 
         {/* Labels */}
         {automation.labels && automation.labels.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1.5">
-            {automation.labels.map((label) => {
+          <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+            {automation.labels.slice(0, 3).map((label) => {
               const color = getLabelColor(label);
               return (
                 <span
                   key={label}
                   className={cn(
-                    "rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+                    "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium",
                     color.bg,
                     color.text
                   )}
@@ -418,6 +538,11 @@ function AutomationCard({
                 </span>
               );
             })}
+            {automation.labels.length > 3 && (
+              <span className="text-[10px] text-muted-foreground">
+                +{automation.labels.length - 3}
+              </span>
+            )}
           </div>
         )}
 
