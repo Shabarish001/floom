@@ -1,19 +1,65 @@
-# Floom
+# floom
 
-Deploy Python scripts as cloud automations with zero infrastructure.
+> Deploy Python scripts as cloud automations. No Docker, no infra. Get a web UI, REST API, and MCP endpoint in seconds.
 
-Floom is a deployment platform for Python scripts. Write a script with a `run()` function, and Floom gives you a shareable web UI with typed inputs, scheduling, managed secrets, and execution history. No Docker, no YAML, no servers.
+floom is the production layer for AI agents. Write a Python script with a `run()` function, and floom gives you a shareable web UI with typed inputs/outputs, a REST API, managed secrets, version history, and scheduling. Deploy from Claude Code, Cursor, or any MCP-capable agent.
 
-## Installation
+## Protocol
+
+Scripts must have a `run()` function that takes typed parameters and returns a dict:
+
+```python
+import os
+
+def run(input_text: str) -> dict:
+    # Your logic here
+    # Secrets via os.environ["SECRET_NAME"]
+    return {"result": "output"}
+```
+
+Manifest defines inputs, outputs, secrets, and dependencies:
+
+```json
+{
+  "name": "Automation Name",
+  "description": "One sentence",
+  "inputs": [{"name": "input_text", "label": "Input", "type": "textarea", "required": true}],
+  "outputs": [{"name": "result", "label": "Result", "type": "text"}],
+  "secrets_needed": ["GEMINI_API_KEY"],
+  "python_dependencies": ["google-genai"],
+  "manifest_version": "1.0"
+}
+```
+
+Input types: text, textarea, url, file, number, enum, boolean, date.
+Output types: text, table, number, html, pdf, image.
+
+## API
+
+Base URL: https://dashboard.floom.dev/api/
+Auth: Bearer token via API key from dashboard.floom.dev/settings.
+
+- POST /api/artifacts - Upload code + manifest, returns artifactId
+- POST /api/test - Test artifact in sandbox, returns testRunId
+- POST /api/deploy - Deploy artifact as live automation
+- GET /api/automations - List automations
+- GET /api/automations/:id - Get automation detail + code
+- POST /api/automations/:id/update - Deploy new version
+- POST /api/automations/:id/run - Trigger a run
+- POST /api/automations/:id/rollback - Revert version
+- POST /api/secrets - Store org secret
+
+## Installation (Claude Code skill)
 
 ```bash
 git clone https://github.com/floomhq/floom.git ~/.claude/skills/floom-repo && ~/.claude/skills/floom-repo/scripts/setup
 ```
 
-Setup symlinks the `/floom` skill into `~/.claude/skills/floom`. API key is configured on first `/floom` use via dashboard.floom.dev/settings.
+Then use `/floom` in Claude Code to deploy any Python script.
 
 ## Links
 
 - GitHub: https://github.com/floomhq/floom
 - Dashboard: https://dashboard.floom.dev
-- API keys: https://dashboard.floom.dev/settings
+- Docs: https://docs.floom.dev
+- Protocol reference: https://github.com/floomhq/floom/blob/main/BUILDING.md
