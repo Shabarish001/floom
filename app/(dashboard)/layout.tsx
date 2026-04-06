@@ -1,5 +1,6 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import { ConvexClientProvider } from "../ConvexClientProvider";
+import { PostHogIdentify } from "../providers/PostHogIdentify";
 
 export default function DashboardLayout({
   children,
@@ -8,6 +9,7 @@ export default function DashboardLayout({
 }) {
   return (
     <ClerkProvider>
+      <PostHogIdentify />
       <ConvexClientProvider>{children}</ConvexClientProvider>
     </ClerkProvider>
   );

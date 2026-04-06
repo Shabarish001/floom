@@ -1,5 +1,6 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import { ConvexClientProvider } from "../ConvexClientProvider";
+import { PostHogIdentify } from "../providers/PostHogIdentify";
 
 export default function PublishedLayout({
   children,
@@ -8,6 +9,7 @@ export default function PublishedLayout({
 }) {
   return (
     <ClerkProvider>
+      <PostHogIdentify />
       <ConvexClientProvider>
         <div className="min-h-screen bg-background flex flex-col">
           {/* Minimal header */}

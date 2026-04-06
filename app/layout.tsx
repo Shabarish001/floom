@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Inter, DM_Serif_Display, JetBrains_Mono, Geist } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import { PostHogProvider } from "./providers/PostHogProvider";
+import { PostHogPageview } from "./providers/PostHogPageview";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -39,7 +41,10 @@ export default function RootLayout({
       }
     >
       <body className={`${inter.className} min-h-full antialiased`}>
-        {children}
+        <PostHogProvider>
+          <PostHogPageview />
+          {children}
+        </PostHogProvider>
       </body>
     </html>
   );
