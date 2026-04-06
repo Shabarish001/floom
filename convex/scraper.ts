@@ -21,6 +21,7 @@ function extractLogo(html: string, baseUrl: string): string | undefined {
   while ((match = linkRegex.exec(html)) !== null) {
     const rel = match[1].toLowerCase();
     const href = match[2];
+    if (href.startsWith("data:")) continue; // skip data URIs
     if (rel.includes("apple-touch-icon")) {
       candidates.push({ href, priority: 3 });
     } else if (rel === "icon" || rel.includes("icon")) {
@@ -33,6 +34,7 @@ function extractLogo(html: string, baseUrl: string): string | undefined {
   // Also try the alternate attribute order (href before rel)
   while ((match = linkRegexAlt.exec(html)) !== null) {
     const href = match[1];
+    if (href.startsWith("data:")) continue; // skip data URIs
     const rel = match[2].toLowerCase();
     if (rel.includes("apple-touch-icon")) {
       candidates.push({ href, priority: 3 });
@@ -52,9 +54,18 @@ function extractLogo(html: string, baseUrl: string): string | undefined {
     }
   }
 
-  // Sort by priority descending, pick the best
+  // Sort by priority descending, pick the best non-data-URI candidate
   candidates.sort((a, b) => b.priority - a.priority);
   const best = candidates[0].href;
+
+  // Final guard: if the top candidate is somehow a data URI, fall back
+  if (best.startsWith("data:")) {
+    try {
+      return new URL("/favicon.ico", baseUrl).href;
+    } catch {
+      return undefined;
+    }
+  }
 
   try {
     return new URL(best, baseUrl).href;
