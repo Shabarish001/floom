@@ -1,9 +1,10 @@
 "use client";
 
 import { ConvexProviderWithClerk } from "convex/react-clerk";
-import { ConvexReactClient, useMutation } from "convex/react";
+import { ConvexReactClient, useMutation, useQuery, useConvexAuth } from "convex/react";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 
 const convex = new ConvexReactClient(
@@ -24,6 +25,36 @@ function UserSync() {
   return null;
 }
 
+// Redirects new users to /onboarding if their workspace setup is incomplete.
+function OnboardingRedirect() {
+  const { isAuthenticated } = useConvexAuth();
+  const pathname = usePathname();
+  const router = useRouter();
+
+  const needsOnboarding = useQuery(
+    api.organizations.needsOnboarding,
+    isAuthenticated ? {} : "skip"
+  );
+
+  useEffect(() => {
+    if (needsOnboarding === undefined) return; // loading
+    if (!needsOnboarding) return; // already onboarded
+
+    // Don't redirect if already on onboarding, sign-in, or sign-up pages
+    if (
+      pathname === "/onboarding" ||
+      pathname.startsWith("/sign-in") ||
+      pathname.startsWith("/sign-up")
+    ) {
+      return;
+    }
+
+    router.replace("/onboarding");
+  }, [needsOnboarding, pathname, router]);
+
+  return null;
+}
+
 export function ConvexClientProvider({
   children,
 }: {
@@ -32,6 +63,7 @@ export function ConvexClientProvider({
   return (
     <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
       <UserSync />
+      <OnboardingRedirect />
       {children}
     </ConvexProviderWithClerk>
   );

@@ -21,6 +21,7 @@ import type * as lib_manifest from "../lib/manifest.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
 import type * as lib_waitForResult from "../lib/waitForResult.js";
 import type * as notifications from "../notifications.js";
+import type * as organizations from "../organizations.js";
 import type * as runs from "../runs.js";
 import type * as secrets from "../secrets.js";
 import type * as testRuns from "../testRuns.js";
@@ -46,6 +47,7 @@ declare const fullApi: ApiFromModules<{
   "lib/rateLimit": typeof lib_rateLimit;
   "lib/waitForResult": typeof lib_waitForResult;
   notifications: typeof notifications;
+  organizations: typeof organizations;
   runs: typeof runs;
   secrets: typeof secrets;
   testRuns: typeof testRuns;

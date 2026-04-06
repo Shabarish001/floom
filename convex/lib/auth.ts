@@ -27,7 +27,7 @@ export async function requireAuth(
     .unique();
 
   if (!org) {
-    throw new Error("Organization not found. Please reload the page.");
+    throw new Error("Workspace not found. Please reload the page.");
   }
 
   return { userId, orgId: org._id };
