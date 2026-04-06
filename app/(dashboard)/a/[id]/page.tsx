@@ -37,6 +37,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LabelsEditor } from "@/components/automation/LabelsEditor";
 
 export default function AutomationPage({
   params: paramsPromise,
@@ -238,6 +239,12 @@ export default function AutomationPage({
           {automation.schedule && (
             <span>Next: {describeSchedule(automation.schedule)}</span>
           )}
+        </div>
+        <div className="mt-2">
+          <LabelsEditor
+            automationId={params.id as Id<"automations">}
+            labels={(automation as unknown as { labels?: string[] }).labels ?? []}
+          />
         </div>
       </div>
 

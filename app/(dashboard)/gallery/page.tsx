@@ -19,6 +19,7 @@ import {
   Command as CommandIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getLabelColor } from "@/lib/label-colors";
 import {
   Card,
   CardHeader,
@@ -234,6 +235,7 @@ type Automation = {
   status: "active" | "deploying" | "failed";
   schedule: string | null;
   scheduleEnabled?: boolean;
+  labels?: string[];
   lastRunStatus: string | null;
   lastRunAt: number | null;
 };
@@ -432,6 +434,27 @@ function AutomationCard({
         <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
           {automation.description}
         </p>
+
+        {/* Labels */}
+        {automation.labels && automation.labels.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1.5">
+            {automation.labels.map((label) => {
+              const color = getLabelColor(label);
+              return (
+                <span
+                  key={label}
+                  className={cn(
+                    "rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+                    color.bg,
+                    color.text
+                  )}
+                >
+                  {label}
+                </span>
+              );
+            })}
+          </div>
+        )}
 
         {/* Last run */}
         {automation.lastRunAt && runIcon && (

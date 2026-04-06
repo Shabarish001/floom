@@ -43,6 +43,8 @@ export default defineSchema({
       v.id("automationVersions"),
       v.literal("placeholder")
     ),
+    // User-defined labels for filtering/organizing
+    labels: v.optional(v.array(v.string())),
     // Publishing fields — flat model for v1
     publishedSlug: v.optional(v.string()),
     publishAccess: v.optional(v.union(v.literal("public"), v.literal("email"))),
