@@ -151,7 +151,7 @@ export default function AutomationPage({
       <div className="min-h-screen bg-background">
         <Nav />
         <div className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">Automation not found.</p>
+          <p className="text-muted-foreground">App not found.</p>
         </div>
       </div>
     );
@@ -223,7 +223,7 @@ export default function AutomationPage({
                   onClick={() => setShowDeleteConfirm(true)}
                 >
                   <Trash2 />
-                  Delete automation
+                  Delete app
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -323,13 +323,13 @@ export default function AutomationPage({
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete automation</DialogTitle>
+            <DialogTitle>Delete app</DialogTitle>
             <DialogDescription>
               Are you sure you want to delete{" "}
               <span className="font-medium text-foreground">
                 {automation.name}
               </span>
-              ? This will permanently remove the automation, all versions, and
+              ? This will permanently remove the app, all versions, and
               run history. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
@@ -352,12 +352,12 @@ export default function AutomationPage({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {automation.publishedAt ? "Published" : "Publish automation"}
+              {automation.publishedAt ? "Published" : "Publish app"}
             </DialogTitle>
             <DialogDescription>
               {automation.publishedAt
-                ? "This automation is live. Anyone with the link can run it."
-                : "Create a public link for this automation."}
+                ? "This app is live. Anyone with the link can run it."
+                : "Create a public link for this app."}
             </DialogDescription>
           </DialogHeader>
 

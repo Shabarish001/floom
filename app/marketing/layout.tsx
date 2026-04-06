@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "floom - Deploy Python automations instantly",
+  title: "floom - Deploy Python apps instantly",
   description:
     "AI writes it. You paste it. floom deploys it. Live app with UI, API, and a link you can share.",
   openGraph: {
-    title: "floom - Deploy Python automations instantly",
+    title: "floom - Deploy Python apps instantly",
     description:
       "AI writes it. You paste it. floom deploys it. Live app with UI, API, and a link you can share.",
     images: ["/og-image.png"],
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "floom - Deploy Python automations instantly",
+    title: "floom - Deploy Python apps instantly",
     description:
       "AI writes it. You paste it. floom deploys it. Live app with UI, API, and a link you can share.",
     images: ["/og-image.png"],

@@ -88,7 +88,7 @@ export default function GalleryPage() {
               className="w-64 justify-start gap-2 text-muted-foreground font-normal"
             >
               <Search size={14} />
-              <span className="flex-1 text-left">Search automations...</span>
+              <span className="flex-1 text-left">Search apps...</span>
               <kbd className="flex items-center gap-0.5 px-1.5 py-0.5 bg-muted rounded text-[11px] font-medium text-muted-foreground border border-border">
                 <CommandIcon size={11} />K
               </kbd>
@@ -112,7 +112,7 @@ export default function GalleryPage() {
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <Box size={40} className="text-gray-200 mb-4" />
               <p className="text-muted-foreground text-sm">
-                No automations match &ldquo;{query}&rdquo;.
+                No apps match &ldquo;{query}&rdquo;.
               </p>
               <Button
                 variant="link"
@@ -146,18 +146,18 @@ export default function GalleryPage() {
       <CommandDialog
         open={paletteOpen}
         onOpenChange={setPaletteOpen}
-        title="Search Automations"
-        description="Search for an automation to open"
+        title="Search Apps"
+        description="Search for an app to open"
         className="sm:max-w-lg"
       >
         <Command>
-          <CommandInput placeholder="Search automations..." />
+          <CommandInput placeholder="Search apps..." />
           <CommandList className="max-h-80">
             <CommandEmpty>
               <p className="text-muted-foreground">
                 {automations?.length === 0
-                  ? "No automations in this workspace yet."
-                  : "No matching automations."}
+                  ? "No apps in this workspace yet."
+                  : "No matching apps."}
               </p>
             </CommandEmpty>
             <CommandGroup>
