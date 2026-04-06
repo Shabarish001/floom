@@ -1,8 +1,12 @@
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { requireAuth } from "./lib/auth";
 
-// Complete workspace onboarding — stores optional website URL and marks onboarding done.
+/**
+ * Complete workspace onboarding: store the website URL on the org record,
+ * mark onboarding done, and schedule a background scrape to extract branding data.
+ */
 export const completeOnboarding = mutation({
   args: {
     websiteUrl: v.optional(v.string()),
@@ -38,6 +42,15 @@ export const completeOnboarding = mutation({
     }
 
     await ctx.db.patch(orgId, patch);
+
+    // Schedule the scraper to run asynchronously if a URL was provided
+    if (websiteUrl) {
+      await ctx.scheduler.runAfter(0, internal.scraper.scrapeWorkspaceUrl, {
+        orgId,
+        websiteUrl,
+      });
+    }
+
     return { orgId };
   },
 });
