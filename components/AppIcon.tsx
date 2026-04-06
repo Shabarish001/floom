@@ -25,6 +25,7 @@ function hashCode(str: string): number {
 
 type AppIconProps = {
   name: string;
+  iconSeed?: string;
   size?: "sm" | "md" | "lg";
   className?: string;
 };
@@ -35,7 +36,7 @@ const sizeMap = {
   lg: { container: "size-16", img: 52, fallback: 28 },
 };
 
-export function AppIcon({ name, size = "md", className }: AppIconProps) {
+export function AppIcon({ name, iconSeed, size = "md", className }: AppIconProps) {
   if (!name) {
     const { container, fallback } = sizeMap[size];
     return (
@@ -51,10 +52,11 @@ export function AppIcon({ name, size = "md", className }: AppIconProps) {
     );
   }
 
-  const hash = hashCode(name);
+  const seedStr = iconSeed ?? name;
+  const hash = hashCode(seedStr);
   const color = PASTEL_COLORS[hash % PASTEL_COLORS.length];
   const { container, img } = sizeMap[size];
-  const seed = encodeURIComponent(name.toLowerCase().replace(/\s+/g, "-"));
+  const seed = encodeURIComponent(seedStr.toLowerCase().replace(/\s+/g, "-"));
   const src = `https://api.dicebear.com/9.x/pixel-art/svg?seed=${seed}&backgroundColor=transparent`;
 
   return (

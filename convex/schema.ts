@@ -54,6 +54,8 @@ export default defineSchema({
     webhookTokenHash: v.optional(v.string()),
     webhookTokenPrefix: v.optional(v.string()),
     webhookCreatedAt: v.optional(v.number()),
+    // Permanent icon seed for DiceBear avatar (set on creation, survives renames)
+    iconSeed: v.optional(v.string()),
   })
     .index("by_orgId", ["orgId"])
     .index("by_createdBy", ["createdBy"])
