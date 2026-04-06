@@ -53,7 +53,30 @@ function errorResponse(message: string, status = 400): Response {
   return jsonResponse({ error: message }, status);
 }
 
-// POST /api/artifacts — create an immutable code+manifest blob.
+// POST /api/artifacts/upload-url — Step 1: get presigned PUT URL for zip upload.
+http.route({
+  path: "/api/artifacts/upload-url",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const { orgId } = await verifyApiKey(request, ctx);
+
+      const result = await ctx.runAction(internal.artifactActions.generateUploadUrl, {
+        orgId: orgId as string,
+      });
+
+      return jsonResponse({ uploadUrl: result.uploadUrl, r2Key: result.r2Key });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      if (msg.includes("Unauthorized") || msg.includes("Invalid API key") || msg.includes("revoked")) {
+        return errorResponse(msg, 401);
+      }
+      return errorResponse(msg, 400);
+    }
+  }),
+});
+
+// POST /api/artifacts — Step 3: validate zip + create artifact.
 http.route({
   path: "/api/artifacts",
   method: "POST",
@@ -62,18 +85,20 @@ http.route({
       const { orgId, keyId } = await verifyApiKey(request, ctx);
 
       const body = (await request.json()) as {
-        code: string;
         manifest: unknown;
+        entrypoint: string;
+        r2Key: string;
       };
 
-      if (!body.code || !body.manifest) {
-        return errorResponse("code and manifest are required");
+      if (!body.manifest || !body.entrypoint || !body.r2Key) {
+        return errorResponse("manifest, entrypoint, and r2Key are required");
       }
 
-      const result = await ctx.runMutation(internal.artifacts.create, {
+      const result = await ctx.runAction(internal.artifactActions.processAndCreate, {
         orgId,
-        code: body.code,
         manifest: body.manifest,
+        entrypoint: body.entrypoint,
+        r2Key: body.r2Key,
         createdBy: keyId as string,
       });
 
@@ -82,6 +107,9 @@ http.route({
       const msg = err instanceof Error ? err.message : "Unknown error";
       if (msg.includes("Unauthorized") || msg.includes("Invalid API key") || msg.includes("revoked")) {
         return errorResponse(msg, 401);
+      }
+      if (msg.includes("too large") || msg.includes("exceeds")) {
+        return errorResponse(msg, 413);
       }
       return errorResponse(msg, 400);
     }
@@ -495,6 +523,47 @@ http.route({
       return jsonResponse(run);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown error";
+      return errorResponse(msg, 400);
+    }
+  }),
+});
+
+// GET /api/artifacts/:id/code — download artifact zip.
+http.route({
+  pathPrefix: "/api/artifacts/",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const url = new URL(request.url);
+      const parts = url.pathname.split("/");
+      // /api/artifacts/:id/code
+      const artifactId = parts[3];
+      const action = parts[4];
+
+      if (!artifactId || action !== "code") {
+        return errorResponse("Not found", 404);
+      }
+
+      const { orgId } = await verifyApiKey(request, ctx);
+
+      const artifact = await ctx.runQuery(internal.artifacts.get, {
+        id: artifactId as Id<"artifacts">,
+      });
+
+      if (!artifact) return errorResponse("Artifact not found", 404);
+      if (artifact.orgId !== orgId) return errorResponse("Forbidden", 403);
+
+      const { url: downloadUrl } = await ctx.runAction(
+        internal.artifactActions.getDownloadUrl,
+        { r2Key: artifact.r2Key }
+      );
+
+      return jsonResponse({ downloadUrl, fileList: artifact.fileList });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      if (msg.includes("Unauthorized") || msg.includes("Invalid API key") || msg.includes("revoked")) {
+        return errorResponse(msg, 401);
+      }
       return errorResponse(msg, 400);
     }
   }),

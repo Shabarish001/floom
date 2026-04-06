@@ -1,26 +1,33 @@
 import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
-import { validateManifestStructure } from "./lib/manifest";
 
-// Create an artifact — validates manifest, stores code+manifest blob.
+// Insert artifact document. Called by artifactActions.processAndCreate after validation.
 export const create = internalMutation({
   args: {
     orgId: v.id("organizations"),
-    code: v.string(),
     manifest: v.any(),
+    entrypoint: v.string(),
+    r2Key: v.string(),
+    fileList: v.array(
+      v.object({
+        path: v.string(),
+        size: v.number(),
+        hash: v.string(),
+      })
+    ),
+    totalSize: v.number(),
+    fileCount: v.number(),
     createdBy: v.string(),
   },
   handler: async (ctx, args) => {
-    const manifest = args.manifest as Parameters<typeof validateManifestStructure>[1];
-    const validationError = validateManifestStructure(args.code, manifest);
-    if (validationError) {
-      throw new Error(`Validation failed: ${validationError.message}`);
-    }
-
     const artifactId = await ctx.db.insert("artifacts", {
       orgId: args.orgId,
-      code: args.code,
       manifest: args.manifest,
+      entrypoint: args.entrypoint,
+      r2Key: args.r2Key,
+      fileList: args.fileList,
+      totalSize: args.totalSize,
+      fileCount: args.fileCount,
       createdAt: Date.now(),
       createdBy: args.createdBy,
     });

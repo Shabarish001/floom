@@ -2,11 +2,21 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  // Immutable code+manifest blobs. Created once, referenced by testRuns and automationVersions.
+  // Immutable multi-file artifacts. File contents stored as zip in R2 (code-artifacts bucket).
   artifacts: defineTable({
     orgId: v.id("organizations"),
-    code: v.string(),
     manifest: v.any(),
+    entrypoint: v.string(), // file path, e.g. "main.py" or "src/main.py"
+    r2Key: v.string(), // R2 key in code-artifacts bucket
+    fileList: v.array(
+      v.object({
+        path: v.string(),
+        size: v.number(),
+        hash: v.string(), // SHA-256
+      })
+    ),
+    totalSize: v.number(),
+    fileCount: v.number(),
     createdAt: v.number(),
     createdBy: v.string(),
   })
