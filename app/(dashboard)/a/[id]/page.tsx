@@ -10,7 +10,7 @@ import { StatusDot } from "@/components/ui/StatusDot";
 import { RunForm } from "@/components/automation/RunForm";
 import { OutputPanel } from "@/components/automation/OutputPanel";
 import { RunHistory } from "./RunHistory";
-import { CodeTab } from "./CodeTab";
+
 import { VersionsTab } from "./VersionsTab";
 import { SecretsTab } from "./SecretsTab";
 import { Share2, Pause, Play, MoreHorizontal, Trash2, Globe } from "lucide-react";
@@ -247,7 +247,6 @@ export default function AutomationPage({
           <TabsList>
             <TabsTrigger value="app">App</TabsTrigger>
             <TabsTrigger value="runs">Runs</TabsTrigger>
-            <TabsTrigger value="code">Code</TabsTrigger>
             <TabsTrigger value="versions">Versions</TabsTrigger>
             {automation.isOwner && (
               <TabsTrigger value="secrets">Secrets</TabsTrigger>
@@ -298,15 +297,7 @@ export default function AutomationPage({
           <RunHistory
             runs={automation.runs ?? []}
             onSelectRun={(runId) => setActiveRunId(runId)}
-          />
-        </TabsContent>
-
-        <TabsContent value="code" className="flex-1 overflow-y-auto">
-          <CodeTab
-            automationId={params.id as Id<"automations">}
-            currentVersionId={
-              automation.currentVersionId as Id<"automationVersions">
-            }
+            manifestOutputs={automation.manifest?.outputs ?? []}
           />
         </TabsContent>
 

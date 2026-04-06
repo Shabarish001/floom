@@ -150,7 +150,10 @@ export const getDetailInternal = internalQuery({
       scheduleEnabled: automation.scheduleEnabled ?? true,
       createdAt: automation.createdAt,
       currentVersion: version?.version ?? 1,
-      code: artifact?.code ?? null,
+      entrypoint: artifact?.entrypoint ?? null,
+      fileList: artifact?.fileList ?? null,
+      fileCount: artifact?.fileCount ?? null,
+      totalSize: artifact?.totalSize ?? null,
       manifest: artifact?.manifest ?? null,
     };
   },
@@ -275,8 +278,26 @@ export const getVersion = query({
 
     return {
       ...version,
-      code: artifact?.code ?? null,
+      entrypoint: artifact?.entrypoint ?? null,
+      fileList: artifact?.fileList ?? null,
+      fileCount: artifact?.fileCount ?? null,
+      totalSize: artifact?.totalSize ?? null,
+      r2Key: artifact?.r2Key ?? null,
       manifest: artifact?.manifest ?? null,
+    };
+  },
+});
+
+// Internal query for actions that need version + artifact r2Key.
+export const getVersionInternal = internalQuery({
+  args: { versionId: v.id("automationVersions") },
+  handler: async (ctx, args) => {
+    const version = await ctx.db.get(args.versionId);
+    if (!version) return null;
+    const artifact = await ctx.db.get(version.artifactId);
+    return {
+      ...version,
+      r2Key: artifact?.r2Key ?? null,
     };
   },
 });

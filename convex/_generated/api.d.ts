@@ -9,6 +9,7 @@
  */
 
 import type * as apiKeys from "../apiKeys.js";
+import type * as artifactActions from "../artifactActions.js";
 import type * as artifacts from "../artifacts.js";
 import type * as automations from "../automations.js";
 import type * as crons from "../crons.js";
@@ -34,6 +35,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   apiKeys: typeof apiKeys;
+  artifactActions: typeof artifactActions;
   artifacts: typeof artifacts;
   automations: typeof automations;
   crons: typeof crons;

@@ -1,9 +1,12 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+import { useState } from "react";
+import { Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -13,6 +16,18 @@ export function VersionsTab({
   automationId: Id<"automations">;
 }) {
   const versions = useQuery(api.automations.getVersions, { automationId });
+  const getDownloadUrl = useAction(api.artifactActions.getVersionDownloadUrl);
+  const [downloading, setDownloading] = useState<string | null>(null);
+
+  const handleDownload = async (versionId: Id<"automationVersions">) => {
+    setDownloading(versionId);
+    try {
+      const { url } = await getDownloadUrl({ versionId });
+      window.open(url, "_blank");
+    } finally {
+      setDownloading(null);
+    }
+  };
 
   if (!versions) {
     return (
@@ -59,6 +74,16 @@ export function VersionsTab({
                   </p>
                 )}
               </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="shrink-0"
+                disabled={downloading === v._id}
+                onClick={() => handleDownload(v._id as Id<"automationVersions">)}
+                title="Download code"
+              >
+                <Download className="size-3.5" />
+              </Button>
             </div>
             {i < versions.length - 1 && <Separator />}
           </div>

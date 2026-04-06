@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { OutputBlock } from "@/components/automation/OutputPanel";
 
 type Run = {
   _id: string;
@@ -22,12 +23,21 @@ type Run = {
   error: string | null;
 };
 
+type ManifestOutput = {
+  name: string;
+  label: string;
+  type: "text" | "table" | "number" | "html" | "pdf" | "image";
+  columns?: string[];
+};
+
 export function RunHistory({
   runs,
   onSelectRun,
+  manifestOutputs = [],
 }: {
   runs: Run[];
   onSelectRun: (runId: string) => void;
+  manifestOutputs?: ManifestOutput[];
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
@@ -101,7 +111,19 @@ export function RunHistory({
                   </div>
 
                   {run.status === "success" && Boolean(run.outputs) && (
-                    <OutputSummary outputs={run.outputs} />
+                    <div className="space-y-3">
+                      {Object.entries(run.outputs as Record<string, unknown>).map(([key, value]) => {
+                        const manifestOut = manifestOutputs.find((o) => o.name === key);
+                        return (
+                          <OutputBlock
+                            key={key}
+                            name={key}
+                            value={value}
+                            manifestType={manifestOut?.type}
+                          />
+                        );
+                      })}
+                    </div>
                   )}
 
                   {run.status !== "success" && run.error && (
@@ -124,30 +146,6 @@ export function RunHistory({
   );
 }
 
-function OutputSummary({ outputs }: { outputs: unknown }) {
-  const obj = outputs as Record<string, unknown>;
-  const entries = Object.entries(obj);
-
-  return (
-    <div>
-      <p className="font-medium text-muted-foreground mb-1">Output summary</p>
-      {entries.map(([key, value]) => {
-        if (Array.isArray(value)) {
-          return (
-            <p key={key} className="text-muted-foreground">
-              {key}: {value.length} rows
-            </p>
-          );
-        }
-        return (
-          <p key={key} className="text-muted-foreground">
-            {key}: {String(value)}
-          </p>
-        );
-      })}
-    </div>
-  );
-}
 
 function formatDate(ts: number): string {
   return new Date(ts).toLocaleString("en-US", {

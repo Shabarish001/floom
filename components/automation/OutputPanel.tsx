@@ -240,7 +240,7 @@ function SuccessOutput({
   );
 }
 
-function OutputBlock({
+export function OutputBlock({
   name,
   value,
   manifestType,
