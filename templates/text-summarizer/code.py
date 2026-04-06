@@ -6,6 +6,11 @@ from collections import Counter
 
 def run(text, num_sentences=5):
     """Summarize text using extractive TF-IDF sentence scoring."""
+    if not text or not text.strip():
+        return {"result": json.dumps({"error": "Text is empty."})}
+
+    num_sentences = max(1, int(num_sentences))
+
     # Split into sentences
     sentences = re.split(r'(?<=[.!?])\s+', text.strip())
     sentences = [s.strip() for s in sentences if len(s.strip()) > 10]

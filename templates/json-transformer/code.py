@@ -5,16 +5,24 @@ import json
 
 def run(data, operation, fields=""):
     """Convert data between formats."""
-    if operation == "csv_to_json":
-        return {"result": csv_to_json(data)}
-    elif operation == "json_to_csv":
-        return {"result": json_to_csv(data)}
-    elif operation == "flatten":
-        return {"result": flatten_json(data)}
-    elif operation == "pick_fields":
-        return {"result": pick_fields(data, fields)}
-    else:
-        return {"result": json.dumps({"error": f"Unknown operation: {operation}"})}
+    if not data or not data.strip():
+        return {"result": json.dumps({"error": "Input data is empty."})}
+
+    try:
+        if operation == "csv_to_json":
+            return {"result": csv_to_json(data)}
+        elif operation == "json_to_csv":
+            return {"result": json_to_csv(data)}
+        elif operation == "flatten":
+            return {"result": flatten_json(data)}
+        elif operation == "pick_fields":
+            return {"result": pick_fields(data, fields)}
+        else:
+            return {"result": json.dumps({"error": f"Unknown operation: {operation}"})}
+    except (json.JSONDecodeError, csv.Error) as e:
+        return {"result": json.dumps({"error": f"Failed to parse input data: {str(e)}"})}
+    except Exception as e:
+        return {"result": json.dumps({"error": f"Transform failed: {str(e)}"})}
 
 
 def csv_to_json(csv_data):

@@ -5,10 +5,20 @@ from bs4 import BeautifulSoup
 
 def run(url):
     """Extract structured data from a web page."""
-    response = requests.get(url, timeout=15, headers={
-        "User-Agent": "Mozilla/5.0 (compatible; Floom/1.0)"
-    })
-    response.raise_for_status()
+    if not url or not url.strip():
+        return {"result": json.dumps({"error": "URL is required."})}
+
+    url = url.strip()
+    if not url.startswith(("http://", "https://")):
+        url = "https://" + url
+
+    try:
+        response = requests.get(url, timeout=15, headers={
+            "User-Agent": "Mozilla/5.0 (compatible; Floom/1.0)"
+        })
+        response.raise_for_status()
+    except requests.RequestException as e:
+        return {"result": json.dumps({"error": f"Request failed: {str(e)}"})}
 
     soup = BeautifulSoup(response.text, "html.parser")
 

@@ -5,6 +5,11 @@ from fpdf import FPDF
 
 def run(title, body, author=""):
     """Generate a formatted PDF report."""
+    if not title or not title.strip():
+        return {"result": ""}
+    if not body or not body.strip():
+        body = "(No content provided.)"
+
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=20)
     pdf.add_page()

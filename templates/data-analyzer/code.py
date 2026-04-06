@@ -5,7 +5,16 @@ import pandas as pd
 
 def run(csv_data):
     """Analyze CSV data and return summary statistics."""
-    df = pd.read_csv(io.StringIO(csv_data))
+    if not csv_data or not csv_data.strip():
+        return {"result": json.dumps({"error": "CSV data is empty."})}
+
+    try:
+        df = pd.read_csv(io.StringIO(csv_data))
+    except Exception as e:
+        return {"result": json.dumps({"error": f"Failed to parse CSV: {str(e)}"})}
+
+    if df.empty:
+        return {"result": json.dumps({"error": "CSV has headers but no data rows."})}
 
     summary = {
         "rows": len(df),
