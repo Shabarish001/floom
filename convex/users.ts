@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 // Called from the frontend on first authenticated load (upsert pattern).
@@ -48,6 +48,17 @@ export const upsert = mutation({
     }
 
     return { userId, orgId: org!._id };
+  },
+});
+
+// Internal: look up org by Clerk org ID. Used by actions that can't call requireAuth directly.
+export const getOrgByClerkOrgId = internalQuery({
+  args: { clerkOrgId: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("organizations")
+      .withIndex("by_clerkOrgId", (q) => q.eq("clerkOrgId", args.clerkOrgId))
+      .unique();
   },
 });
 

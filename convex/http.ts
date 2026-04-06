@@ -2,6 +2,7 @@ import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
+import { sha256Hash } from "./lib/crypto";
 
 const http = httpRouter();
 
@@ -17,11 +18,7 @@ async function verifyApiKey(
   }
   const rawKey = authHeader.slice(7).trim();
 
-  const encoded = new TextEncoder().encode(rawKey);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", encoded);
-  const hashedKey = Array.from(new Uint8Array(hashBuffer))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+  const hashedKey = await sha256Hash(rawKey);
 
   const apiKey = await ctx.runQuery(internal.apiKeys.getByHashedKey, {
     hashedKey,
@@ -51,6 +48,49 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 function errorResponse(message: string, status = 400): Response {
   return jsonResponse({ error: message }, status);
+}
+
+// Timing-safe string comparison to prevent timing attacks on token verification.
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
+
+// Build a rich error response from a finished run document.
+function buildErrorResponse(doc: any): { type: string; message: string; hint: string; runId?: string } {
+  const errorType = doc.errorType ?? "runtime_error";
+  const errorMsg = doc.error ?? "Unknown error";
+
+  let hint: string;
+  switch (errorType) {
+    case "missing_secret": {
+      const match = errorMsg.match(/KeyError:\s*'?([^'"\s]+)/);
+      const secretName = match?.[1] ?? "the required secret";
+      hint = `Set the ${secretName} secret in your automation's settings`;
+      break;
+    }
+    case "syntax_error":
+      hint = "Fix the syntax error in your script and redeploy";
+      break;
+    case "timeout":
+      hint = "Script exceeded the execution timeout. Optimize your code or reduce input size";
+      break;
+    case "sandbox_error":
+      hint = "Internal execution error. Try again or contact support";
+      break;
+    case "runtime_error":
+    default:
+      hint = "Check the error message and fix your script";
+      break;
+  }
+
+  // Truncate raw error message to prevent leaking sensitive data from script output
+  const safeMessage = errorMsg.length > 500 ? errorMsg.slice(0, 500) + "..." : errorMsg;
+  return { type: errorType, message: safeMessage, hint };
 }
 
 // POST /api/artifacts/upload-url — Step 1: get presigned PUT URL for zip upload.
@@ -495,6 +535,9 @@ http.route({
 });
 
 // GET /api/runs/:runId — skill polls run status.
+// Supports two auth modes:
+// 1. API key via Authorization header (org-scoped access)
+// 2. viewToken via ?token= query param (for webhook/published run polling, no API key needed)
 http.route({
   pathPrefix: "/api/runs/",
   method: "GET",
@@ -504,6 +547,27 @@ http.route({
       const runId = url.pathname.split("/")[3];
       if (!runId) return errorResponse("Run ID required");
 
+      const viewToken = url.searchParams.get("token");
+
+      // Auth mode 2: viewToken-based polling (webhook and published runs)
+      if (viewToken) {
+        const run = await ctx.runQuery(internal.runs.getInternal, {
+          runId: runId as Id<"runs">,
+        });
+        if (!run) return errorResponse("Run not found", 404);
+        if (!run.viewToken || run.viewToken !== viewToken) {
+          return errorResponse("Run not found", 404);
+        }
+        return jsonResponse({
+          status: run.status,
+          outputs: run.outputs,
+          error: run.error,
+          errorType: run.errorType,
+          durationMs: run.durationMs,
+        });
+      }
+
+      // Auth mode 1: API key (org-scoped access)
       const { orgId } = await verifyApiKey(request, ctx);
 
       const run = await ctx.runQuery(internal.runs.getInternal, {
@@ -565,6 +629,203 @@ http.route({
         return errorResponse(msg, 401);
       }
       return errorResponse(msg, 400);
+    }
+  }),
+});
+
+// GET /api/hooks/:automationId/:token/schema — webhook schema endpoint.
+http.route({
+  pathPrefix: "/api/hooks/",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const url = new URL(request.url);
+      const parts = url.pathname.split("/");
+      const automationId = parts[3];
+      const token = parts[4];
+      const action = parts[5]; // "schema"
+
+      if (!automationId || !token) {
+        return errorResponse("Not found", 404);
+      }
+
+      // Verify webhook token
+      const automation = await ctx.runQuery(internal.automations.getInternal, {
+        id: automationId as Id<"automations">,
+      });
+      if (!automation || !automation.webhookEnabled) {
+        return errorResponse("Not found", 404);
+      }
+      const hashedToken = await sha256Hash(token);
+      if (!automation.webhookTokenHash || !timingSafeEqual(hashedToken, automation.webhookTokenHash)) {
+        return errorResponse("Not found", 404);
+      }
+
+      if (action !== "schema") {
+        return errorResponse("Not found", 404);
+      }
+
+      // Get manifest from current version
+      const version = automation.currentVersionId !== "placeholder"
+        ? await ctx.runQuery(internal.runs.getVersionInternal, { versionId: automation.currentVersionId as Id<"automationVersions"> })
+        : null;
+      const artifact = version
+        ? await ctx.runQuery(internal.artifacts.get, { id: version.artifactId })
+        : null;
+      const manifest = artifact?.manifest as any;
+
+      return jsonResponse({
+        name: automation.name,
+        description: automation.description,
+        inputs: manifest?.inputs ?? [],
+        outputs: manifest?.outputs ?? {},
+      });
+    } catch {
+      return errorResponse("Internal error", 500);
+    }
+  }),
+});
+
+// POST /api/hooks/:automationId/:token — webhook trigger endpoint.
+http.route({
+  pathPrefix: "/api/hooks/",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const url = new URL(request.url);
+      const parts = url.pathname.split("/");
+      const automationId = parts[3];
+      const token = parts[4];
+
+      if (!automationId || !token || parts[5]) {
+        return errorResponse("Not found", 404);
+      }
+
+      // Fetch automation — use uniform 404 for all auth failures to prevent ID enumeration
+      const automation = await ctx.runQuery(internal.automations.getInternal, {
+        id: automationId as Id<"automations">,
+      });
+      if (!automation || !automation.webhookEnabled) {
+        return errorResponse("Not found", 404);
+      }
+      if (automation.status !== "active") {
+        return errorResponse("Not found", 404);
+      }
+
+      // Timing-safe token comparison
+      const hashedToken = await sha256Hash(token);
+      if (!automation.webhookTokenHash || !timingSafeEqual(hashedToken, automation.webhookTokenHash)) {
+        return errorResponse("Not found", 404);
+      }
+
+      // Parse body
+      let body: Record<string, unknown> = {};
+      try {
+        const text = await request.text();
+        if (text.trim()) {
+          body = JSON.parse(text);
+          if (typeof body !== "object" || Array.isArray(body) || body === null) {
+            return errorResponse("Request body must be a JSON object", 400);
+          }
+        }
+      } catch {
+        return errorResponse("Invalid JSON in request body", 400);
+      }
+
+      // Get manifest for input validation
+      const version = automation.currentVersionId !== "placeholder"
+        ? await ctx.runQuery(internal.runs.getVersionInternal, { versionId: automation.currentVersionId as Id<"automationVersions"> })
+        : null;
+      if (!version) {
+        return errorResponse("Automation is still deploying", 400);
+      }
+      const artifact = await ctx.runQuery(internal.artifacts.get, { id: version.artifactId });
+      const manifest = artifact?.manifest as any;
+
+      // Validate inputs against manifest
+      if (manifest?.inputs && Array.isArray(manifest.inputs) && manifest.inputs.length > 0) {
+        const { validateInputs } = await import("./lib/validateInputs");
+        const validation = validateInputs(body, manifest.inputs);
+        if (!validation.valid) {
+          return jsonResponse({
+            error: {
+              type: "validation_error",
+              message: "Input validation failed",
+              details: validation.errors,
+            },
+          }, 400);
+        }
+      }
+
+      // Parse wait parameter from query string
+      const waitParam = url.searchParams.get("wait");
+      const waitSecs = waitParam !== null
+        ? Math.min(Math.max(0, Number(waitParam) || 0), MAX_WAIT_SECONDS)
+        : DEFAULT_WAIT_SECONDS;
+
+      // Trigger the run
+      const result = await ctx.runMutation(internal.runs.triggerInternal, {
+        automationId: automationId as Id<"automations">,
+        inputs: body,
+        triggeredBy: "webhook",
+        clerkUserId: "webhook:" + automationId,
+        orgId: automation.orgId,
+      });
+
+      const runId = result.runId;
+      const viewToken = result.viewToken;
+
+      // Build absolute poll URL
+      const origin = url.origin;
+      const pollUrl = viewToken
+        ? `${origin}/api/runs/${runId}?token=${viewToken}`
+        : `${origin}/api/runs/${runId}`;
+
+      // Wait for result if requested
+      if (waitSecs > 0) {
+        try {
+          const doc = await ctx.runAction(
+            internal.lib.waitForResult.waitForRun,
+            { runId, waitMs: waitSecs * 1000 }
+          );
+          if (doc && ["success", "error", "timeout"].includes(doc.status)) {
+            if (doc.status === "success") {
+              return jsonResponse({
+                runId,
+                status: "completed",
+                result: doc.outputs,
+              });
+            }
+            // Rich error response (Step 9)
+            return jsonResponse({
+              runId,
+              status: "error",
+              error: buildErrorResponse(doc),
+            }, 500);
+          }
+        } catch {
+          // Wait failed — return async response
+        }
+      }
+
+      // Async response (Step 10)
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+      return jsonResponse({
+        runId,
+        status: "running",
+        pollUrl,
+        retryAfter: 2,
+        expiresAt,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      if (msg.includes("Rate limit")) {
+        return jsonResponse(
+          { error: { type: "rate_limit", message: msg, hint: "Try again later" } },
+          429
+        );
+      }
+      return errorResponse(msg, 500);
     }
   }),
 });

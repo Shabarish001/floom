@@ -2,6 +2,7 @@ import { mutation, query, internalMutation, internalQuery } from "./_generated/s
 import { v } from "convex/values";
 import { nanoid } from "nanoid";
 import { requireAuth, optionalAuth } from "./lib/auth";
+import { sha256Hash } from "./lib/crypto";
 
 function isOwner(createdBy: string, userId: string): boolean {
   return createdBy === userId || userId.endsWith(`|${createdBy}`);
@@ -803,5 +804,66 @@ export const getPublishedInternal = internalQuery({
     if (!automation || !automation.publishedAt) return null;
     if (automation.status !== "active") return null;
     return { _id: automation._id, orgId: automation.orgId };
+  },
+});
+
+async function generateAndStoreWebhookToken(
+  ctx: { db: any },
+  automationId: any
+): Promise<string> {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  const rawToken =
+    "floom_wh_" +
+    Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+
+  const webhookTokenHash = await sha256Hash(rawToken);
+  const webhookTokenPrefix = rawToken.slice(0, 17);
+
+  await ctx.db.patch(automationId, {
+    webhookEnabled: true,
+    webhookTokenHash,
+    webhookTokenPrefix,
+    webhookCreatedAt: Date.now(),
+  });
+
+  return rawToken;
+}
+
+// Enable webhook for an automation. Returns the raw token (shown once).
+export const enableWebhook = mutation({
+  args: { automationId: v.id("automations") },
+  handler: async (ctx, args) => {
+    const { orgId } = await requireAuth(ctx);
+    const automation = await ctx.db.get(args.automationId);
+    if (!automation) throw new Error("Automation not found");
+    if (automation.orgId !== orgId) throw new Error("Forbidden");
+    return generateAndStoreWebhookToken(ctx, args.automationId);
+  },
+});
+
+// Disable webhook (keeps hash for re-enable).
+export const disableWebhook = mutation({
+  args: { automationId: v.id("automations") },
+  handler: async (ctx, args) => {
+    const { orgId } = await requireAuth(ctx);
+    const automation = await ctx.db.get(args.automationId);
+    if (!automation) throw new Error("Automation not found");
+    if (automation.orgId !== orgId) throw new Error("Forbidden");
+    await ctx.db.patch(args.automationId, { webhookEnabled: false });
+  },
+});
+
+// Regenerate webhook token. Always overwrites the previous token.
+export const regenerateWebhook = mutation({
+  args: { automationId: v.id("automations") },
+  handler: async (ctx, args) => {
+    const { orgId } = await requireAuth(ctx);
+    const automation = await ctx.db.get(args.automationId);
+    if (!automation) throw new Error("Automation not found");
+    if (automation.orgId !== orgId) throw new Error("Forbidden");
+    return generateAndStoreWebhookToken(ctx, args.automationId);
   },
 });

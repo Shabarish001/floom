@@ -27,3 +27,23 @@
 - **Depends on:** Multi-file artifacts, artifact GC
 - **Priority:** P2
 - **Effort:** S (CC: ~10 min)
+
+## Webhook Failure Notifications
+- **What:** Send email notification to automation creator when a webhook-triggered run fails.
+- **Why:** Silent webhook failures mean the agency's email classification silently stops working. `finishRun` already sends emails for schedule failures but not webhook failures.
+- **Pros:** Surfaces failures without requiring dashboard monitoring.
+- **Cons:** Need to resolve recipient (webhook runs use `clerkUserId: "webhook:automationId"`, not a real user). Notify the automation creator.
+- **Context:** In `convex/runs.ts:finishRun`, the notification check at line 169-193 only fires for `triggeredBy === "schedule"`. Adding `|| run.triggeredBy === "webhook"` with the same creator lookup is a one-line change, but verify the `createdBy` lookup works for webhook-triggered runs.
+- **Depends on:** Webhook feature (shipped)
+- **Priority:** P3
+- **Effort:** S (CC: ~5 min)
+
+## Per-Automation Webhook Rate Limit
+- **What:** Add optional per-automation rate limit for webhook-triggered runs (e.g., 50/hour per automation).
+- **Why:** A runaway external caller can exhaust the entire org's 200/hour budget, blocking all manual and scheduled runs.
+- **Pros:** Fault isolation between automations. Prevents one misconfigured integration from bricking the org.
+- **Cons:** More rate limit logic. Not needed until multiple automations share an org.
+- **Context:** Current rate limit counts all runs across all automations per org (200/hour shared pool). For one agency with one webhook, the shared pool is fine. Add per-automation limit when orgs have 2+ webhook-enabled automations.
+- **Depends on:** Webhook feature (shipped)
+- **Priority:** P3
+- **Effort:** S (CC: ~10 min)

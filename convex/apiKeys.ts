@@ -1,13 +1,7 @@
 import { internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-
-async function hashKey(key: string): Promise<string> {
-  const encoded = new TextEncoder().encode(key);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", encoded);
-  return Array.from(new Uint8Array(hashBuffer))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
+import { sha256Hash } from "./lib/crypto";
+import { requireAuth } from "./lib/auth";
 
 function generateRawKey(): string {
   const bytes = new Uint8Array(24);
@@ -28,12 +22,10 @@ export const create = mutation({
     name: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
+    const { userId, orgId } = await requireAuth(ctx);
 
-    // Verify org exists
-    const org = await ctx.db.get(args.orgId);
-    if (!org) throw new Error("Workspace not found");
+    // Verify caller belongs to the target org
+    if (args.orgId !== orgId) throw new Error("Forbidden");
 
     // Rate limit: reject if most recent key was created < 60 seconds ago
     const existingKeys = await ctx.db
@@ -51,14 +43,14 @@ export const create = mutation({
 
     const rawKey = generateRawKey();
     const prefix = rawKey.slice(0, 12);
-    const hashedKey = await hashKey(rawKey);
+    const hashedKey = await sha256Hash(rawKey);
 
     await ctx.db.insert("apiKeys", {
-      orgId: args.orgId,
+      orgId,
       name: args.name,
       prefix,
       hashedKey,
-      createdBy: identity.tokenIdentifier,
+      createdBy: userId,
       createdAt: Date.now(),
     });
 
@@ -70,8 +62,10 @@ export const create = mutation({
 export const list = query({
   args: { orgId: v.id("organizations") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
+    const { orgId } = await requireAuth(ctx);
+
+    // Only allow listing keys for the caller's own org
+    if (args.orgId !== orgId) return [];
 
     const keys = await ctx.db
       .query("apiKeys")
@@ -92,11 +86,13 @@ export const list = query({
 export const revoke = mutation({
   args: { keyId: v.id("apiKeys") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
+    const { orgId } = await requireAuth(ctx);
 
     const key = await ctx.db.get(args.keyId);
     if (!key) throw new Error("API key not found");
+
+    // Verify caller owns this key's org
+    if (key.orgId !== orgId) throw new Error("Forbidden");
 
     // Already revoked? No-op.
     if (key.revokedAt) return;
@@ -127,11 +123,10 @@ export const hasKeys = query({
 export const createFirstKey = mutation({
   args: { orgId: v.id("organizations") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
+    const { userId, orgId } = await requireAuth(ctx);
 
-    const org = await ctx.db.get(args.orgId);
-    if (!org) throw new Error("Workspace not found");
+    // Verify caller belongs to the target org
+    if (args.orgId !== orgId) throw new Error("Forbidden");
 
     // Check if org already has any active (non-revoked) key
     const keys = await ctx.db
@@ -153,14 +148,14 @@ export const createFirstKey = mutation({
 
     const rawKey = generateRawKey();
     const prefix = rawKey.slice(0, 12);
-    const hashedKey = await hashKey(rawKey);
+    const hashedKey = await sha256Hash(rawKey);
 
     await ctx.db.insert("apiKeys", {
-      orgId: args.orgId,
+      orgId,
       name: "default",
       prefix,
       hashedKey,
-      createdBy: identity.tokenIdentifier,
+      createdBy: userId,
       createdAt: Date.now(),
     });
 

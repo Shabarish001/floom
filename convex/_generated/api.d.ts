@@ -20,6 +20,7 @@ import type * as lib_auth from "../lib/auth.js";
 import type * as lib_crypto from "../lib/crypto.js";
 import type * as lib_manifest from "../lib/manifest.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
+import type * as lib_validateInputs from "../lib/validateInputs.js";
 import type * as lib_waitForResult from "../lib/waitForResult.js";
 import type * as notifications from "../notifications.js";
 import type * as organizations from "../organizations.js";
@@ -48,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   "lib/crypto": typeof lib_crypto;
   "lib/manifest": typeof lib_manifest;
   "lib/rateLimit": typeof lib_rateLimit;
+  "lib/validateInputs": typeof lib_validateInputs;
   "lib/waitForResult": typeof lib_waitForResult;
   notifications: typeof notifications;
   organizations: typeof organizations;

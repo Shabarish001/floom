@@ -1,7 +1,7 @@
 import { Id } from "../_generated/dataModel";
 import { MutationCtx } from "../_generated/server";
 
-const RATE_LIMIT = 50;
+const RATE_LIMIT = 200;
 const RATE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
 /**
@@ -41,7 +41,7 @@ export async function checkOrgRateLimit(
   count += testRuns.length;
 
   if (count >= RATE_LIMIT) {
-    throw new Error("Rate limit exceeded: 50 runs per hour per org");
+    throw new Error("Rate limit exceeded: 200 runs per hour per org");
   }
 }
 

@@ -50,6 +50,10 @@ export default defineSchema({
     publishAccess: v.optional(v.union(v.literal("public"), v.literal("email"))),
     allowedEmails: v.optional(v.array(v.string())),
     publishedAt: v.optional(v.number()),
+    webhookEnabled: v.optional(v.boolean()),
+    webhookTokenHash: v.optional(v.string()),
+    webhookTokenPrefix: v.optional(v.string()),
+    webhookCreatedAt: v.optional(v.number()),
   })
     .index("by_orgId", ["orgId"])
     .index("by_createdBy", ["createdBy"])
@@ -92,7 +96,8 @@ export default defineSchema({
       v.literal("manual"),
       v.literal("skill"),
       v.literal("schedule"),
-      v.literal("published")
+      v.literal("published"),
+      v.literal("webhook")
     ),
     viewToken: v.optional(v.string()),
     durationMs: v.union(v.number(), v.null()),

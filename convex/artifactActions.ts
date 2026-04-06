@@ -221,6 +221,10 @@ export const getDownloadUrl = internalAction({
 export const getVersionDownloadUrl = action({
   args: { versionId: v.id("automationVersions") },
   handler: async (ctx, args): Promise<{ url: string }> => {
+    // Auth: verify caller is authenticated and owns the automation
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
     const version = await ctx.runQuery(
       internal.automations.getVersionInternal,
       { versionId: args.versionId }
@@ -228,6 +232,22 @@ export const getVersionDownloadUrl = action({
     if (!version || !version.r2Key) {
       throw new Error("Version not found or has no code artifact");
     }
+
+    // Verify org ownership: version → automation → org
+    const automation = await ctx.runQuery(internal.automations.getInternal, {
+      id: version.automationId,
+    });
+    if (!automation) throw new Error("Automation not found");
+
+    const clerkOrgId =
+      (identity as { org_id?: string }).org_id ?? identity.tokenIdentifier;
+    const org = await ctx.runQuery(internal.users.getOrgByClerkOrgId, {
+      clerkOrgId,
+    });
+    if (!org || automation.orgId !== org._id) {
+      throw new Error("Forbidden");
+    }
+
     const { url } = await ctx.runAction(internal.artifactActions.getDownloadUrl, {
       r2Key: version.r2Key,
     });

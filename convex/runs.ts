@@ -18,7 +18,7 @@ export const trigger = mutation({
     automationId: v.id("automations"),
     inputs: v.any(),
     triggeredBy: v.optional(
-      v.union(v.literal("manual"), v.literal("skill"), v.literal("schedule"))
+      v.union(v.literal("manual"), v.literal("skill"), v.literal("schedule"), v.literal("webhook"))
     ),
   },
   handler: async (ctx, args) => {
@@ -201,7 +201,7 @@ export const triggerInternal = internalMutation({
     automationId: v.id("automations"),
     inputs: v.any(),
     triggeredBy: v.optional(
-      v.union(v.literal("manual"), v.literal("skill"), v.literal("schedule"))
+      v.union(v.literal("manual"), v.literal("skill"), v.literal("schedule"), v.literal("webhook"))
     ),
     clerkUserId: v.string(),
     orgId: v.id("organizations"),
@@ -222,6 +222,7 @@ export const triggerInternal = internalMutation({
     }
 
     const triggeredBy = args.triggeredBy ?? "skill";
+    const viewToken = triggeredBy === "webhook" ? nanoid(21) : undefined;
 
     const runId = await ctx.db.insert("runs", {
       automationId: args.automationId,
@@ -233,6 +234,7 @@ export const triggerInternal = internalMutation({
       errorType: null,
       error: null,
       triggeredBy,
+      ...(viewToken ? { viewToken } : {}),
       durationMs: null,
       startedAt: Date.now(),
       finishedAt: null,
@@ -240,7 +242,7 @@ export const triggerInternal = internalMutation({
 
     await ctx.scheduler.runAfter(0, internal.executor.executeRun, { runId });
 
-    return { runId };
+    return { runId, viewToken };
   },
 });
 

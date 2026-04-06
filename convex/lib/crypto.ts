@@ -1,3 +1,12 @@
+// SHA-256 hash utility shared across API keys and webhooks.
+export async function sha256Hash(input: string): Promise<string> {
+  const encoded = new TextEncoder().encode(input);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", encoded);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 // AES-256-GCM encryption for org secrets.
 // Key: 32-byte hex string from SECRETS_ENCRYPTION_KEY env var.
 

@@ -13,6 +13,7 @@ import { RunHistory } from "./RunHistory";
 
 import { VersionsTab } from "./VersionsTab";
 import { SecretsTab } from "./SecretsTab";
+import { WebhookTab } from "./WebhookTab";
 import { Share2, Pause, Play, MoreHorizontal, Trash2, Globe } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -255,6 +256,7 @@ export default function AutomationPage({
             <TabsTrigger value="app">App</TabsTrigger>
             <TabsTrigger value="runs">Runs</TabsTrigger>
             <TabsTrigger value="versions">Versions</TabsTrigger>
+            <TabsTrigger value="webhook">Webhook</TabsTrigger>
             {automation.isOwner && (
               <TabsTrigger value="secrets">Secrets</TabsTrigger>
             )}
@@ -310,6 +312,16 @@ export default function AutomationPage({
 
         <TabsContent value="versions" className="flex-1 overflow-y-auto">
           <VersionsTab automationId={params.id as Id<"automations">} />
+        </TabsContent>
+
+        <TabsContent value="webhook" className="flex-1 overflow-y-auto">
+          <WebhookTab
+            automationId={params.id}
+            webhookEnabled={automation.webhookEnabled}
+            webhookTokenPrefix={automation.webhookTokenPrefix}
+            webhookCreatedAt={automation.webhookCreatedAt}
+            manifest={automation.manifest}
+          />
         </TabsContent>
 
         {automation.isOwner && (
