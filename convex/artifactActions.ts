@@ -220,7 +220,7 @@ export const getDownloadUrl = internalAction({
 // Public action: get a download URL for a version's code zip.
 export const getVersionDownloadUrl = action({
   args: { versionId: v.id("automationVersions") },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ url: string }> => {
     const version = await ctx.runQuery(
       internal.automations.getVersionInternal,
       { versionId: args.versionId }
