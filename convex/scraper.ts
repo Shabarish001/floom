@@ -382,6 +382,24 @@ interface GeminiExtractionResult {
   brandTone?: string;
 }
 
+/** Validate that a string is a valid hex color code. */
+function isValidHex(color: string): boolean {
+  return /^#(?:[0-9a-fA-F]{3,4}){1,2}$/.test(color);
+}
+
+/** Sanitize a string field: trim, reject HTML tags, enforce max length. */
+function sanitizeField(
+  value: unknown,
+  maxLength: number
+): string | undefined {
+  if (typeof value !== "string" || !value) return undefined;
+  const trimmed = value.trim();
+  if (trimmed.length === 0 || trimmed.length > maxLength) return undefined;
+  // Reject values that look like HTML tags
+  if (/<[^>]+>/.test(trimmed)) return undefined;
+  return trimmed;
+}
+
 /**
  * Send trimmed HTML to Gemini for AI-powered brand analysis.
  * Falls back gracefully: returns empty result on any failure.
@@ -394,23 +412,28 @@ async function extractWithGemini(
   // Trim HTML to first 10K chars (enough for head + hero section)
   const trimmedHtml = html.slice(0, 10_000);
 
-  const prompt = `Analyze this website HTML and extract branding information. Return ONLY valid JSON, no markdown.
+  const prompt = `Analyze this website HTML and extract branding information.
+Return ONLY the JSON object, no explanation, no markdown code fences.
+If you cannot determine a field, use null instead of guessing.
 
 Website URL: ${url}
 
 HTML (first 10K chars):
 ${trimmedHtml}
 
-Extract:
+Extract a JSON object with exactly these fields:
 {
-  "primaryColor": "#hex of the main brand color",
-  "secondaryColor": "#hex of the secondary color (or null)",
-  "accentColor": "#hex of the accent/CTA color (or null)",
-  "companyName": "the company or product name",
-  "summary": "one sentence describing what the company does",
-  "industry": "one word category (e.g. fintech, saas, ecommerce, devtools)",
-  "brandTone": "one word (professional, playful, technical, minimal, bold)"
-}`;
+  "primaryColor": "#hex of the main brand color or null",
+  "secondaryColor": "#hex of the secondary color or null",
+  "accentColor": "#hex of the accent/CTA color or null",
+  "companyName": "the company or product name or null",
+  "summary": "one sentence describing what the company does or null",
+  "industry": "one word category (e.g. fintech, saas, ecommerce, devtools) or null",
+  "brandTone": "one word (professional, playful, technical, minimal, bold) or null"
+}
+
+Example output:
+{"primaryColor":"#1a73e8","secondaryColor":"#34a853","accentColor":null,"companyName":"Acme Corp","summary":"Acme Corp builds developer tools for cloud infrastructure.","industry":"devtools","brandTone":"professional"}`;
 
   const body = {
     contents: [
@@ -424,14 +447,24 @@ Extract:
     },
   };
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }
-  );
+  // 15-second timeout for Gemini API call
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15_000);
+
+  let response: Response;
+  try {
+    response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      }
+    );
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!response.ok) {
     throw new Error(`Gemini API error: ${response.status}`);
@@ -448,17 +481,32 @@ Extract:
     .trim();
   const result = JSON.parse(jsonStr);
 
+  // Validate colors: only keep valid hex codes
   const colors: string[] = [];
-  if (result.primaryColor) colors.push(result.primaryColor);
-  if (result.secondaryColor) colors.push(result.secondaryColor);
-  if (result.accentColor) colors.push(result.accentColor);
+  for (const key of ["primaryColor", "secondaryColor", "accentColor"] as const) {
+    const val = result[key];
+    if (typeof val === "string" && isValidHex(val)) {
+      colors.push(val);
+    }
+  }
+
+  // Validate text fields with length limits
+  const companyName = sanitizeField(result.companyName, 200);
+  const summary = sanitizeField(result.summary, 500);
+  const industry = sanitizeField(result.industry, 50);
+  const brandTone = sanitizeField(result.brandTone, 30);
+
+  console.log("Gemini extraction completed:", {
+    colorsFound: colors.length,
+    hasName: !!companyName,
+  });
 
   return {
     colors,
-    companyName: result.companyName || undefined,
-    summary: result.summary || undefined,
-    industry: result.industry || undefined,
-    brandTone: result.brandTone || undefined,
+    companyName,
+    summary,
+    industry,
+    brandTone,
   };
 }
 
