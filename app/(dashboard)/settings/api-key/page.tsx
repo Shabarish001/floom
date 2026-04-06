@@ -104,8 +104,8 @@ export default function ApiKeyPage() {
                   New API key created. Copy it now -- it will not be shown again.
                 </AlertTitle>
                 <AlertDescription>
-                  <div className="flex items-center gap-2 mt-2">
-                    <code className="flex-1 text-xs font-mono bg-muted px-2 py-1 rounded truncate">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mt-2">
+                    <code className="flex-1 text-xs font-mono bg-muted px-2 py-1 rounded truncate min-w-0 overflow-x-auto">
                       {newKeyValue}
                     </code>
                     <Button variant="outline" size="sm" onClick={copyNewKey}>
@@ -127,12 +127,12 @@ export default function ApiKeyPage() {
                 {keys.map((k) => (
                   <div
                     key={k._id}
-                    className="flex items-center justify-between px-3 py-2.5"
+                    className="flex items-center justify-between gap-2 px-3 py-2.5"
                   >
-                    <div className="flex items-center gap-3">
-                      <Key className="size-3.5 text-muted-foreground" />
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                      <Key className="size-3.5 text-muted-foreground shrink-0" />
+                      <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                        <span className="text-sm font-medium truncate">
                           {k.name}
                         </span>
                         <span className="text-xs text-muted-foreground font-mono">
@@ -165,7 +165,7 @@ export default function ApiKeyPage() {
             )}
 
             {/* Create key form */}
-            <form onSubmit={handleCreate} className="flex items-center gap-2">
+            <form onSubmit={handleCreate} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               <Input
                 type="text"
                 placeholder="Key name (e.g. dev-laptop)"
@@ -176,6 +176,7 @@ export default function ApiKeyPage() {
               <Button
                 type="submit"
                 disabled={creating || !keyName.trim() || !orgId}
+                className="shrink-0"
               >
                 <Plus className="size-3.5" />
                 {creating ? "Creating..." : "Create key"}
@@ -194,10 +195,10 @@ export default function ApiKeyPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <div className="flex-1 flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2 min-w-0 overflow-x-auto">
                 <Terminal className="size-3.5 text-muted-foreground shrink-0" />
-                <code className="text-xs font-mono text-foreground truncate">
+                <code className="text-xs font-mono text-foreground whitespace-nowrap">
                   {installCommand}
                 </code>
               </div>

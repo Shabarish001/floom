@@ -277,7 +277,7 @@ export function OutputBlock({
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
             {name.replace(/_/g, " ")}
           </p>
-          <p className="text-5xl font-bold text-foreground tabular-nums">
+          <p className="text-3xl sm:text-5xl font-bold text-foreground tabular-nums break-all">
             {value.toLocaleString()}
           </p>
         </CardContent>

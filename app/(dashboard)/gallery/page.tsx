@@ -129,48 +129,46 @@ export default function GalleryPage() {
 
       <div className="max-w-6xl mx-auto w-full px-4 py-6 flex-1">
         {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            {/* View toggle */}
-            <div className="flex items-center rounded-lg border border-border p-0.5">
-              <button
-                onClick={() => handleViewChange("grid")}
-                className={cn(
-                  "flex items-center justify-center size-7 rounded-md transition-colors",
-                  viewMode === "grid"
-                    ? "bg-muted text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-                aria-label="Grid view"
-              >
-                <LayoutGrid size={14} />
-              </button>
-              <button
-                onClick={() => handleViewChange("list")}
-                className={cn(
-                  "flex items-center justify-center size-7 rounded-md transition-colors",
-                  viewMode === "list"
-                    ? "bg-muted text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-                aria-label="List view"
-              >
-                <List size={14} />
-              </button>
-            </div>
-
-            <Button
-              variant="outline"
-              onClick={() => setPaletteOpen(true)}
-              className="w-64 justify-start gap-2 text-muted-foreground font-normal"
+        <div className="flex items-center gap-2 mb-4">
+          {/* View toggle */}
+          <div className="flex items-center rounded-lg border border-border p-0.5 shrink-0">
+            <button
+              onClick={() => handleViewChange("grid")}
+              className={cn(
+                "flex items-center justify-center size-7 rounded-md transition-colors",
+                viewMode === "grid"
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              aria-label="Grid view"
             >
-              <Search size={14} />
-              <span className="flex-1 text-left">Search apps...</span>
-              <kbd className="flex items-center gap-0.5 px-1.5 py-0.5 bg-muted rounded text-[11px] font-medium text-muted-foreground border border-border">
-                <CommandIcon size={11} />K
-              </kbd>
-            </Button>
+              <LayoutGrid size={14} />
+            </button>
+            <button
+              onClick={() => handleViewChange("list")}
+              className={cn(
+                "flex items-center justify-center size-7 rounded-md transition-colors",
+                viewMode === "list"
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              aria-label="List view"
+            >
+              <List size={14} />
+            </button>
           </div>
+
+          <Button
+            variant="outline"
+            onClick={() => setPaletteOpen(true)}
+            className="flex-1 sm:flex-none sm:w-64 justify-start gap-2 text-muted-foreground font-normal min-w-0"
+          >
+            <Search size={14} className="shrink-0" />
+            <span className="flex-1 text-left truncate">Search apps...</span>
+            <kbd className="hidden sm:flex items-center gap-0.5 px-1.5 py-0.5 bg-muted rounded text-[11px] font-medium text-muted-foreground border border-border">
+              <CommandIcon size={11} />K
+            </kbd>
+          </Button>
         </div>
 
         {/* Label filter bar */}

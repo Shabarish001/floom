@@ -125,11 +125,11 @@ export function SecretsTab() {
               key={s.name}
               className="flex items-center justify-between px-3 py-2 rounded-lg border text-sm"
             >
-              <div className="flex items-center gap-3">
-                <span className="font-mono text-foreground text-xs">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <span className="font-mono text-foreground text-xs truncate">
                   {s.name}
                 </span>
-                <Badge variant="secondary">
+                <Badge variant="secondary" className="shrink-0">
                   \u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022
                 </Badge>
               </div>

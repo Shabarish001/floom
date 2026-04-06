@@ -142,8 +142,8 @@ function ApiReference() {
         {open ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
       </button>
       {open && (
-        <div className="px-3 pb-3 space-y-3 text-xs text-muted-foreground">
-          <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
+        <div className="px-3 pb-3 space-y-3 text-xs text-muted-foreground overflow-x-auto">
+          <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 min-w-0">
             <code className="bg-muted px-1.5 py-0.5 rounded text-[11px]">200</code><span>Success: <code>{`{ runId, status: "completed", result }`}</code></span>
             <code className="bg-muted px-1.5 py-0.5 rounded text-[11px]">202</code><span>Async: <code>{`{ runId, status: "running", pollUrl, retryAfter }`}</code></span>
             <code className="bg-muted px-1.5 py-0.5 rounded text-[11px]">400</code><span>Input validation failed</span>

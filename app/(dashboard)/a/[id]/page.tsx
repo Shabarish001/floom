@@ -167,20 +167,20 @@ export default function AutomationPage({
 
       {/* Header */}
       <div className="px-4 py-3 border-b">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <AppIcon name={automation.name} size="lg" className="shrink-0" />
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <Badge variant="secondary">v{automation.currentVersion}</Badge>
               </div>
-              <h1 className="font-semibold text-foreground truncate">
+              <h1 className="font-semibold text-foreground truncate text-sm sm:text-base">
                 {automation.name}
               </h1>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Button variant="outline" size="sm" onClick={handleShare}>
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            <Button variant="outline" size="sm" onClick={handleShare} className="hidden sm:inline-flex">
               <Share2 className="size-3.5" />
               {copied ? "Copied!" : "Share"}
             </Button>
@@ -188,6 +188,7 @@ export default function AutomationPage({
               variant="outline"
               size="sm"
               onClick={() => setShowPublishDialog(true)}
+              className="hidden sm:inline-flex"
             >
               <Globe className="size-3.5" />
               {automation.publishedAt ? "Published" : "Publish"}
@@ -202,6 +203,7 @@ export default function AutomationPage({
                     ? "Resume schedule"
                     : "Pause schedule"
                 }
+                className="hidden sm:inline-flex"
               >
                 {automation.scheduleEnabled === false ? (
                   <>
@@ -226,6 +228,29 @@ export default function AutomationPage({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
+                  onClick={handleShare}
+                  className="sm:hidden"
+                >
+                  <Share2 />
+                  {copied ? "Copied!" : "Share"}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setShowPublishDialog(true)}
+                  className="sm:hidden"
+                >
+                  <Globe />
+                  {automation.publishedAt ? "Published" : "Publish"}
+                </DropdownMenuItem>
+                {automation.isOwner && automation.schedule && (
+                  <DropdownMenuItem
+                    onClick={handleToggleSchedule}
+                    className="sm:hidden"
+                  >
+                    {automation.scheduleEnabled === false ? <Play /> : <Pause />}
+                    {automation.scheduleEnabled === false ? "Resume" : "Pause"}
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem
                   variant="destructive"
                   onClick={() => setShowDeleteConfirm(true)}
                 >
@@ -236,10 +261,10 @@ export default function AutomationPage({
             </DropdownMenu>
           </div>
         </div>
-        <p className="text-sm text-muted-foreground mt-0.5">
+        <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
           {automation.description}
         </p>
-        <div className="text-xs text-muted-foreground/60 mt-1 flex items-center gap-3">
+        <div className="text-xs text-muted-foreground/60 mt-1 flex items-center gap-3 flex-wrap">
           {lastRun && (
             <span>Last run {formatRelativeTime(lastRun.startedAt)}</span>
           )}
@@ -257,7 +282,7 @@ export default function AutomationPage({
 
       {/* Tabs */}
       <Tabs defaultValue="app" className="flex-1 flex flex-col gap-0">
-        <div className="px-4 py-2 border-b">
+        <div className="px-4 py-2 border-b overflow-x-auto scrollbar-none">
           <TabsList>
             <TabsTrigger value="app">App</TabsTrigger>
             <TabsTrigger value="runs">Runs</TabsTrigger>
