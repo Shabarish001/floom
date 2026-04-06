@@ -19,9 +19,19 @@ export function Nav() {
     <nav className="flex items-center justify-between h-12 px-4 border-b border-gray-200 bg-white">
       <Link
         href="/gallery"
-        className="font-semibold text-sm text-gray-900 hover:text-primary"
+        className="flex items-center"
       >
-        floom
+        <svg
+          className="h-5 w-5"
+          viewBox="0 0 48 48"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M10 6 Q4 6 4 12 L4 36 Q4 42 10 42 L28 42 L44 24 L28 6 Z"
+            fill="currentColor"
+            className="text-gray-900"
+          />
+        </svg>
       </Link>
 
       <div className="flex items-center gap-1">
