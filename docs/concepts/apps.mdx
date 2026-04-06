@@ -1,0 +1,45 @@
+---
+title: Apps and versions
+description: "How automations, artifacts, and versions relate."
+---
+
+## Automations
+
+An automation is a deployed Python script with a web UI, REST API, and shareable URL. Each automation lives at `dashboard.floom.dev/a/<id>`.
+
+When you deploy, floom creates an automation with:
+- A generated web UI based on the manifest's inputs and outputs
+- A REST API endpoint for programmatic access
+- Version history with rollback support
+- Optional scheduling via cron
+
+## Artifacts
+
+An artifact is a versioned code package: a zip of your Python files plus a manifest. Artifacts are created before deploying or updating.
+
+The flow:
+
+```
+Upload zip → Create artifact → Test (optional) → Deploy
+```
+
+Artifacts are immutable. To change code, create a new artifact and update the automation.
+
+## Versions
+
+Every deploy or update creates a new version. Versions are numbered sequentially (v1, v2, v3...).
+
+You can:
+- **Update**: deploy a new artifact to an existing automation (bumps the version)
+- **Rollback**: revert to any previous version via the [rollback endpoint](/api-reference/deploy#rollback)
+
+The automation URL stays the same across versions. Users always see the latest version.
+
+## Multi-file projects
+
+Automations can contain multiple Python files. Rules:
+
+- The entrypoint file must have `def run()` at module level
+- Imports between files use standard Python module paths (e.g., `from utils.helpers import fetch_data`)
+- Every subdirectory with `.py` files needs an `__init__.py`
+- Do not create files named `_runner.py` or `_runner_config.json` (reserved by the platform)

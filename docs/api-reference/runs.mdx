@@ -1,0 +1,79 @@
+---
+title: Runs
+description: "Trigger and poll automation runs."
+---
+
+## Trigger a run
+
+<Card>
+  **POST** `/api/automations/:id/run`
+</Card>
+
+Executes a deployed automation with the given inputs.
+
+**Body:**
+
+```json
+{
+  "inputs": { "query": "hello" },
+  "wait": 10
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `inputs` | Yes | Dict of input values matching manifest input names |
+| `wait` | No | Seconds to wait for result inline (default 10, max 10). Set to `0` to return immediately. |
+
+```bash
+curl -s -X POST "https://dashboard.floom.dev/api/automations/$ID/run" \
+  -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"inputs": {"name": "Alice"}, "wait": 10}'
+```
+
+**Response (completed within wait):**
+
+```json
+{
+  "runId": "run_xyz789",
+  "status": "success",
+  "result": {
+    "status": "success",
+    "outputs": { "greeting": "Hello, Alice!" },
+    "logs": "..."
+  }
+}
+```
+
+**Response (still running):**
+
+```json
+{
+  "runId": "run_xyz789",
+  "status": "running"
+}
+```
+
+If `status` is `pending` or `running`, poll with GET `/api/runs/:runId`.
+
+## Poll run status
+
+<Card>
+  **GET** `/api/runs/:runId`
+</Card>
+
+Returns the current state of a run. Poll until `status` is `success`, `error`, or `timeout`.
+
+```bash
+curl -s "https://dashboard.floom.dev/api/runs/$RUN_ID" \
+  -H "Authorization: Bearer $API_KEY"
+```
+
+**Terminal statuses:**
+
+| Status | Meaning |
+|--------|---------|
+| `success` | Run completed, `outputs` available |
+| `error` | Run failed, `error` field has details |
+| `timeout` | Run exceeded time limit |

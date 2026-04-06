@@ -1,0 +1,75 @@
+---
+title: Deploy
+description: "Deploy an artifact as a live automation."
+---
+
+## Deploy a new automation
+
+<Card>
+  **POST** `/api/deploy`
+</Card>
+
+Creates a new automation from an uploaded artifact. No sandbox test required (but recommended).
+
+**Body:**
+
+```json
+{
+  "artifactId": "art_abc123",
+  "changeNote": "Initial deploy"
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `artifactId` | Yes | ID from [POST /api/artifacts](/api-reference/artifacts) |
+| `changeNote` | No | Version note for history |
+
+**Response:**
+
+```json
+{
+  "id": "auto_xyz789",
+  "url": "https://dashboard.floom.dev/a/auto_xyz789"
+}
+```
+
+The `url` is a shareable link to the automation's web UI.
+
+## Update an existing automation
+
+<Card>
+  **POST** `/api/automations/:id/update`
+</Card>
+
+Deploys a new version of an existing automation. The URL stays the same; the code changes.
+
+**Body:**
+
+```json
+{
+  "artifactId": "art_def456",
+  "changeNote": "Added error handling"
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `artifactId` | Yes | New artifact ID |
+| `changeNote` | No | What changed |
+
+## Rollback
+
+<Card>
+  **POST** `/api/automations/:id/rollback`
+</Card>
+
+Reverts an automation to a previous version.
+
+**Body:**
+
+```json
+{
+  "versionId": "ver_abc123"
+}
+```

@@ -1,0 +1,80 @@
+---
+title: Apps (Automations)
+description: "List and inspect your deployed automations."
+---
+
+## List automations
+
+<Card>
+  **GET** `/api/automations`
+</Card>
+
+Returns all automations in your workspace.
+
+**Query parameters:**
+
+| Param | Required | Description |
+|-------|----------|-------------|
+| `q` | No | Case-insensitive search on name and description |
+
+```bash
+curl -s "https://dashboard.floom.dev/api/automations?q=report" \
+  -H "Authorization: Bearer $API_KEY"
+```
+
+**Response:**
+
+```json
+{
+  "automations": [
+    {
+      "id": "auto_abc123",
+      "name": "Daily Report",
+      "description": "Generates daily sales summary",
+      "status": "active",
+      "schedule": "0 9 * * *",
+      "scheduleEnabled": true,
+      "currentVersion": 3,
+      "createdAt": 1712300000000,
+      "lastRunStatus": "success",
+      "lastRunAt": 1712350000000,
+      "url": "https://dashboard.floom.dev/a/auto_abc123"
+    }
+  ]
+}
+```
+
+## Get automation detail
+
+<Card>
+  **GET** `/api/automations/:id`
+</Card>
+
+Returns full detail including file list, entrypoint, and manifest.
+
+```bash
+curl -s "https://dashboard.floom.dev/api/automations/$AUTOMATION_ID" \
+  -H "Authorization: Bearer $API_KEY"
+```
+
+**Response:**
+
+```json
+{
+  "id": "auto_abc123",
+  "name": "Daily Report",
+  "description": "Generates daily sales summary",
+  "status": "active",
+  "schedule": "0 9 * * *",
+  "currentVersion": 3,
+  "entrypoint": "main.py",
+  "fileList": [
+    { "path": "main.py", "size": 1234, "hash": "abc..." },
+    { "path": "utils/helpers.py", "size": 567, "hash": "def..." }
+  ],
+  "fileCount": 2,
+  "totalSize": 1801,
+  "manifest": { "..." : "..." },
+  "url": "https://dashboard.floom.dev/a/auto_abc123"
+}
+```

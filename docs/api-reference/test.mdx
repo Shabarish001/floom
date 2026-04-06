@@ -1,0 +1,81 @@
+---
+title: Test
+description: "Test artifacts in a sandbox before deploying."
+---
+
+## Run a sandbox test
+
+<Card>
+  **POST** `/api/test`
+</Card>
+
+Executes an artifact's code in an isolated E2B sandbox. Use this to verify your code works before deploying.
+
+**Body:**
+
+```json
+{
+  "artifactId": "art_abc123",
+  "inputs": { "name": "test" },
+  "automationId": "auto_xyz789",
+  "wait": 10
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `artifactId` | Yes | ID from [POST /api/artifacts](/api-reference/artifacts) |
+| `inputs` | Yes | Dict of test input values |
+| `automationId` | No | Link to existing automation (ensures secrets are available during test) |
+| `wait` | No | Seconds to wait for result inline (default 10, max 10) |
+
+```bash
+curl -s -X POST "https://dashboard.floom.dev/api/test" \
+  -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"artifactId": "art_abc123", "inputs": {"name": "test"}}'
+```
+
+**Response (completed within wait):**
+
+```json
+{
+  "testRunId": "tr_xyz789",
+  "status": "success",
+  "result": {
+    "status": "success",
+    "outputs": { "greeting": "Hello, test!" },
+    "logs": "Installing dependencies...\nRunning main.py..."
+  }
+}
+```
+
+**Response (still running):**
+
+```json
+{
+  "testRunId": "tr_xyz789",
+  "status": "pending"
+}
+```
+
+## Poll test run status
+
+<Card>
+  **GET** `/api/test-runs/:id`
+</Card>
+
+Poll until `status` is `success`, `error`, or `timeout`.
+
+```bash
+curl -s "https://dashboard.floom.dev/api/test-runs/$TEST_RUN_ID" \
+  -H "Authorization: Bearer $API_KEY"
+```
+
+**Terminal statuses:**
+
+| Status | Meaning |
+|--------|---------|
+| `success` | Test passed, `outputs` available |
+| `error` | Test failed, check `error` and `logs` fields |
+| `timeout` | Sandbox timed out |
