@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="28" viewBox="0 0 160 28">
+  <rect width="160" height="28" rx="6" fill="#059669"/>
+  <path d="M14 7 Q11 7 11 10 L11 18 Q11 21 14 21 L22 21 L28 14 L22 7 Z" fill="#fff" opacity="0.9"/>
+  <text x="38" y="18.5" font-family="system-ui,-apple-system,sans-serif" font-size="12" font-weight="600" fill="#fff">Deploy on floom</text>
+</svg>
