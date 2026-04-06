@@ -1,0 +1,33 @@
+{
+  "name": "Text Summarizer",
+  "description": "Summarize long text into key points using extractive summarization (no API keys needed).",
+  "inputs": [
+    {
+      "name": "text",
+      "label": "Text to Summarize",
+      "type": "textarea",
+      "description": "The document or article text to summarize",
+      "required": true
+    },
+    {
+      "name": "num_sentences",
+      "label": "Number of Sentences",
+      "type": "number",
+      "description": "How many sentences to include in the summary",
+      "required": false,
+      "default": 5,
+      "min": 1,
+      "max": 20
+    }
+  ],
+  "outputs": [
+    {
+      "name": "result",
+      "label": "Summary",
+      "type": "text"
+    }
+  ],
+  "secrets_needed": [],
+  "python_dependencies": [],
+  "manifest_version": "1"
+}

@@ -1,0 +1,39 @@
+{
+  "name": "JSON Transformer",
+  "description": "Convert data between formats: CSV to JSON, JSON to CSV, flatten nested JSON, or filter JSON fields.",
+  "inputs": [
+    {
+      "name": "data",
+      "label": "Input Data",
+      "type": "textarea",
+      "description": "The data to transform (CSV or JSON)",
+      "required": true
+    },
+    {
+      "name": "operation",
+      "label": "Operation",
+      "type": "enum",
+      "description": "Transformation to apply",
+      "required": true,
+      "options": ["csv_to_json", "json_to_csv", "flatten", "pick_fields"]
+    },
+    {
+      "name": "fields",
+      "label": "Fields (for pick_fields)",
+      "type": "text",
+      "description": "Comma-separated field names to keep (only used with pick_fields)",
+      "required": false,
+      "default": ""
+    }
+  ],
+  "outputs": [
+    {
+      "name": "result",
+      "label": "Transformed Data",
+      "type": "text"
+    }
+  ],
+  "secrets_needed": [],
+  "python_dependencies": [],
+  "manifest_version": "1"
+}

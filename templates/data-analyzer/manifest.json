@@ -1,0 +1,23 @@
+{
+  "name": "Data Analyzer",
+  "description": "Analyze CSV data and return summary statistics, column info, and top insights.",
+  "inputs": [
+    {
+      "name": "csv_data",
+      "label": "CSV Data",
+      "type": "textarea",
+      "description": "Paste CSV content (with headers in the first row)",
+      "required": true
+    }
+  ],
+  "outputs": [
+    {
+      "name": "result",
+      "label": "Analysis Results",
+      "type": "text"
+    }
+  ],
+  "secrets_needed": [],
+  "python_dependencies": ["pandas"],
+  "manifest_version": "1"
+}

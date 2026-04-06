@@ -1,0 +1,38 @@
+{
+  "name": "PDF Report Generator",
+  "description": "Generate a formatted PDF report from a title, body text, and optional sections.",
+  "inputs": [
+    {
+      "name": "title",
+      "label": "Report Title",
+      "type": "text",
+      "description": "Title of the report",
+      "required": true
+    },
+    {
+      "name": "body",
+      "label": "Report Body",
+      "type": "textarea",
+      "description": "Main content of the report (supports multiple paragraphs)",
+      "required": true
+    },
+    {
+      "name": "author",
+      "label": "Author",
+      "type": "text",
+      "description": "Author name for the report header",
+      "required": false,
+      "default": ""
+    }
+  ],
+  "outputs": [
+    {
+      "name": "result",
+      "label": "PDF Report",
+      "type": "pdf"
+    }
+  ],
+  "secrets_needed": [],
+  "python_dependencies": ["fpdf2"],
+  "manifest_version": "1"
+}
