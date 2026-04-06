@@ -97,12 +97,12 @@ export const hasKeys = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return false;
 
-    const firstKey = await ctx.db
+    const keys = await ctx.db
       .query("apiKeys")
       .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
-      .first();
+      .collect();
 
-    return firstKey !== null;
+    return keys.some((k) => !k.revokedAt);
   },
 });
 
@@ -115,15 +115,15 @@ export const createFirstKey = mutation({
     if (!identity) throw new Error("Unauthorized");
 
     const org = await ctx.db.get(args.orgId);
-    if (!org) throw new Error("Organization not found");
+    if (!org) throw new Error("Workspace not found");
 
-    // Check if org already has any key
-    const existing = await ctx.db
+    // Check if org already has any active (non-revoked) key
+    const keys = await ctx.db
       .query("apiKeys")
       .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
-      .first();
+      .collect();
 
-    if (existing) return null;
+    if (keys.some((k) => !k.revokedAt)) return null;
 
     const rawKey = generateRawKey();
     const prefix = rawKey.slice(0, 12);
