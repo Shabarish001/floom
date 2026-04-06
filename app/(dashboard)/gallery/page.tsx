@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useConvexAuth } from "convex/react";
+import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -8,9 +8,6 @@ import { Nav } from "@/components/Nav";
 import {
   Search,
   Box,
-  Copy,
-  Check,
-  Terminal,
   ArrowRight,
   Clock,
   CheckCircle2,
@@ -28,7 +25,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Command,
   CommandDialog,
@@ -39,10 +36,12 @@ import {
   CommandItem,
   CommandSeparator,
 } from "@/components/ui/command";
+import { TemplateCard } from "@/components/TemplateCard";
 
 export default function GalleryPage() {
   const [query, setQuery] = useState("");
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [deployingSlug, setDeployingSlug] = useState<string | null>(null);
   const router = useRouter();
   const { isAuthenticated } = useConvexAuth();
 
@@ -50,6 +49,23 @@ export default function GalleryPage() {
     api.automations.list,
     isAuthenticated ? {} : "skip"
   );
+
+  const templates = useQuery(api.templates.list);
+  const deployTemplate = useMutation(api.templates.deploy);
+
+  const handleDeployTemplate = async (slug: string) => {
+    setDeployingSlug(slug);
+    try {
+      const result = await deployTemplate({ slug });
+      router.push(`/a/${result.id}`);
+    } catch {
+      setDeployingSlug(null);
+    }
+  };
+
+  // True empty state: user has 0 automations and is not searching
+  const showTemplates =
+    automations !== undefined && automations.length === 0 && !query;
 
   const filtered = automations?.filter((a: Automation) => {
     if (query) {
@@ -105,28 +121,63 @@ export default function GalleryPage() {
           </div>
         )}
 
-        {/* Empty state */}
-        {filtered !== undefined &&
-          filtered.length === 0 &&
-          (query ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Box size={40} className="text-gray-200 mb-4" />
-              <p className="text-muted-foreground text-sm">
-                No apps match &ldquo;{query}&rdquo;.
+        {/* Starter templates — shown when user has 0 apps */}
+        {showTemplates && templates === undefined && (
+          <div>
+            <div className="mb-4">
+              <Skeleton className="h-4 w-56 rounded" />
+              <Skeleton className="h-3 w-72 rounded mt-2" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-48 rounded-xl" />
+              ))}
+            </div>
+          </div>
+        )}
+        {showTemplates && templates && (
+          <div>
+            <div className="mb-4">
+              <h2 className="text-sm font-medium text-foreground">
+                Deploy a template to get started
+              </h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                Pick a starter app, or deploy your own with the Floom
+                CLI.
               </p>
-              <Button
-                variant="link"
-                onClick={() => setQuery("")}
-                className="mt-2"
-              >
-                Clear search
-              </Button>
             </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-16">
-              <InstallSkillEmptyState />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {templates.map((t) => (
+                <TemplateCard
+                  key={t.slug}
+                  name={t.name}
+                  description={t.description}
+                  category={t.category}
+                  icon={t.icon}
+                  deploying={deployingSlug === t.slug}
+                  onDeploy={() => handleDeployTemplate(t.slug)}
+                />
+              ))}
             </div>
-          ))}
+          </div>
+        )}
+
+        {/* Search empty state — only when searching returns no results */}
+        {filtered !== undefined && filtered.length === 0 && query && (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <Box size={40} className="text-gray-200 mb-4" />
+            <p className="text-muted-foreground text-sm">
+              No apps match &ldquo;{query}&rdquo;.
+            </p>
+            <Button
+              variant="link"
+              onClick={() => setQuery("")}
+              className="mt-2"
+            >
+              Clear search
+            </Button>
+          </div>
+        )}
 
         {/* Cards grid */}
         {filtered !== undefined && filtered.length > 0 && (
@@ -283,92 +334,6 @@ function formatRelativeTime(ts: number): string {
   if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
   if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
   return `${Math.floor(diff / 86_400_000)}d ago`;
-}
-
-// --- Install Skill Empty State ---
-
-function InstallSkillEmptyState() {
-  const installCommand =
-    "git clone https://github.com/floomhq/floom.git ~/.claude/skills/floom-repo && ~/.claude/skills/floom-repo/scripts/setup";
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(installCommand);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }, []);
-
-  return (
-    <div className="max-w-lg w-full">
-      <div className="flex flex-col items-center mb-8">
-        <div className="size-14 rounded-2xl bg-foreground flex items-center justify-center mb-5 shadow-sm">
-          <Terminal size={26} className="text-background" />
-        </div>
-        <h3 className="text-foreground font-semibold text-lg mb-1">
-          Get started with Floom
-        </h3>
-        <p className="text-sm text-muted-foreground text-center">
-          Deploy Python scripts to the cloud in two steps.
-        </p>
-      </div>
-
-      <div className="space-y-5">
-        {/* Step 1 */}
-        <div className="space-y-2.5">
-          <div className="flex items-center gap-2.5">
-            <span className="flex items-center justify-center size-5 rounded-full bg-foreground text-background text-[11px] font-semibold shrink-0">
-              1
-            </span>
-            <p className="text-sm font-medium text-foreground">
-              Install the Claude Code skill
-            </p>
-          </div>
-          <div className="ml-[30px] flex items-start gap-2 bg-muted/60 border rounded-lg p-3">
-            <code className="flex-1 text-[13px] font-mono text-foreground leading-relaxed break-all select-all">
-              {installCommand}
-            </code>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7 shrink-0 mt-0.5"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleCopy();
-              }}
-            >
-              {copied ? (
-                <Check size={14} className="text-green-500" />
-              ) : (
-                <Copy size={14} />
-              )}
-            </Button>
-          </div>
-          <p className="ml-[30px] text-xs text-muted-foreground">
-            Paste this into your terminal to install the skill.
-          </p>
-        </div>
-
-        {/* Step 2 */}
-        <div className="space-y-2.5">
-          <div className="flex items-center gap-2.5">
-            <span className="flex items-center justify-center size-5 rounded-full bg-foreground text-background text-[11px] font-semibold shrink-0">
-              2
-            </span>
-            <p className="text-sm font-medium text-foreground">
-              Deploy your Python script
-            </p>
-          </div>
-          <p className="ml-[30px] text-sm text-muted-foreground leading-relaxed">
-            Open Claude Code in your project and run{" "}
-            <code className="px-1.5 py-0.5 bg-foreground/10 rounded text-foreground text-xs font-mono font-semibold">
-              /floom
-            </code>{" "}
-            to deploy your script to the cloud.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 // --- AutomationCard ---

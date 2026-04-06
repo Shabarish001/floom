@@ -1,0 +1,23 @@
+{
+  "name": "Web Scraper",
+  "description": "Extract structured data from any URL — titles, headings, links, and metadata.",
+  "inputs": [
+    {
+      "name": "url",
+      "label": "URL",
+      "type": "url",
+      "description": "The web page to scrape",
+      "required": true
+    }
+  ],
+  "outputs": [
+    {
+      "name": "result",
+      "label": "Extracted Data",
+      "type": "text"
+    }
+  ],
+  "secrets_needed": [],
+  "python_dependencies": ["beautifulsoup4", "requests"],
+  "manifest_version": "1"
+}

@@ -25,6 +25,7 @@ import type * as notifications from "../notifications.js";
 import type * as organizations from "../organizations.js";
 import type * as runs from "../runs.js";
 import type * as secrets from "../secrets.js";
+import type * as templates from "../templates.js";
 import type * as testRuns from "../testRuns.js";
 import type * as users from "../users.js";
 
@@ -52,6 +53,7 @@ declare const fullApi: ApiFromModules<{
   organizations: typeof organizations;
   runs: typeof runs;
   secrets: typeof secrets;
+  templates: typeof templates;
   testRuns: typeof testRuns;
   users: typeof users;
 }>;

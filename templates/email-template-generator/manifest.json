@@ -1,0 +1,54 @@
+{
+  "name": "Email Template Generator",
+  "description": "Generate responsive HTML email templates from parameters like subject, body, and brand color.",
+  "inputs": [
+    {
+      "name": "subject",
+      "label": "Email Subject",
+      "type": "text",
+      "description": "The email subject line (used as the preview heading)",
+      "required": true
+    },
+    {
+      "name": "body",
+      "label": "Email Body",
+      "type": "textarea",
+      "description": "The main content of the email (supports multiple paragraphs)",
+      "required": true
+    },
+    {
+      "name": "cta_text",
+      "label": "Button Text",
+      "type": "text",
+      "description": "Call-to-action button label",
+      "required": false,
+      "default": ""
+    },
+    {
+      "name": "cta_url",
+      "label": "Button URL",
+      "type": "url",
+      "description": "URL the button links to",
+      "required": false,
+      "default": ""
+    },
+    {
+      "name": "brand_color",
+      "label": "Brand Color",
+      "type": "text",
+      "description": "Hex color for the header and button (e.g., #2563eb)",
+      "required": false,
+      "default": "#2563eb"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "result",
+      "label": "HTML Email",
+      "type": "html"
+    }
+  ],
+  "secrets_needed": [],
+  "python_dependencies": [],
+  "manifest_version": "1"
+}
