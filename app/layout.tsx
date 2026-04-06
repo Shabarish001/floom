@@ -17,8 +17,43 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Floom",
-  description: "Deploy and share Python automations with your team",
+  title: {
+    default: "Floom",
+    template: "%s | Floom",
+  },
+  description:
+    "Deploy Python apps instantly. From your agent to production in one command.",
+  metadataBase: new URL("https://dashboard.floom.dev"),
+  icons: {
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+    apple: "/apple-touch-icon.png",
+  },
+  openGraph: {
+    title: "Floom",
+    description:
+      "Deploy Python apps instantly. From your agent to production in one command.",
+    url: "https://dashboard.floom.dev",
+    siteName: "Floom",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Floom — Deploy Python apps instantly",
+      },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Floom",
+    description:
+      "Deploy Python apps instantly. From your agent to production in one command.",
+    images: ["/og-image.png"],
+  },
+  other: {
+    "theme-color": "#111827",
+  },
 };
 
 export default function RootLayout({

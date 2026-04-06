@@ -741,6 +741,20 @@ export const updateInternal = internalMutation({
   },
 });
 
+// Lightweight metadata for a published automation (no auth required).
+// Used by Next.js generateMetadata for social previews / SEO.
+export const getPublishedMeta = query({
+  args: { slug: v.string() },
+  handler: async (ctx, args) => {
+    const automation = await ctx.db
+      .query("automations")
+      .withIndex("by_publishedSlug", (q) => q.eq("publishedSlug", args.slug))
+      .first();
+    if (!automation || !automation.publishedAt) return null;
+    return { name: automation.name, description: automation.description };
+  },
+});
+
 // Internal: check if an automation is published and active (used by file upload action).
 export const getPublishedInternal = internalQuery({
   args: { slug: v.string() },
