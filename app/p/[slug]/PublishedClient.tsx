@@ -7,6 +7,7 @@ import { RunForm } from "@/components/automation/RunForm";
 import { OutputPanel } from "@/components/automation/OutputPanel";
 import { Id } from "@/convex/_generated/dataModel";
 import { Lock, ShieldX } from "lucide-react";
+import { AppIcon } from "@/components/AppIcon";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SignInButton } from "@clerk/nextjs";
@@ -177,8 +178,13 @@ export default function PublishedClient({ slug }: { slug: string }) {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 sm:px-6 sm:py-12">
-      <h1 className="text-2xl font-semibold text-foreground">{data.name}</h1>
-      <p className="text-sm text-muted-foreground mt-1">{data.description}</p>
+      <div className="flex items-center gap-3">
+        <AppIcon name={data.name} size="lg" className="shrink-0" />
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">{data.name}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{data.description}</p>
+        </div>
+      </div>
 
       <div className="mt-8 flex flex-col md:flex-row gap-8">
         <div className="md:w-2/5 md:shrink-0">

@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getLabelColor, LABEL_COLORS } from "@/lib/label-colors";
+import { AppIcon } from "@/components/AppIcon";
 import {
   Card,
   CardHeader,
@@ -333,7 +334,6 @@ export default function GalleryPage() {
             </CommandEmpty>
             <CommandGroup>
               {(automations ?? []).map((a: Automation) => {
-                const status = statusConfig[a.status];
                 return (
                   <CommandItem
                     key={a._id}
@@ -345,12 +345,7 @@ export default function GalleryPage() {
                     }}
                     className="py-2.5"
                   >
-                    <span
-                      className={cn(
-                        "size-2 rounded-full shrink-0",
-                        status.color
-                      )}
-                    />
+                    <AppIcon name={a.name} size="sm" className="shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{a.name}</p>
                       <p className="text-xs text-muted-foreground line-clamp-1">
@@ -510,15 +505,20 @@ function AutomationCard({
       </CardHeader>
 
       <CardContent className="flex flex-col gap-1 flex-1">
-        {/* Name */}
-        <h3 className="font-semibold text-foreground text-sm leading-tight">
-          {automation.name}
-        </h3>
+        <div className="flex items-start gap-2.5">
+          <AppIcon name={automation.name} size="md" className="shrink-0" />
+          <div className="min-w-0 flex-1">
+            {/* Name */}
+            <h3 className="font-semibold text-foreground text-sm leading-tight">
+              {automation.name}
+            </h3>
 
-        {/* Description */}
-        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-          {automation.description}
-        </p>
+            {/* Description */}
+            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed mt-0.5">
+              {automation.description}
+            </p>
+          </div>
+        </div>
 
         {/* Labels */}
         {automation.labels && automation.labels.length > 0 && (

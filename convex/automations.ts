@@ -336,6 +336,7 @@ export const deploy = mutation({
       scheduleInputs: manifest.scheduleInputs ?? null,
       // Temporary placeholder — will be patched below
       currentVersionId: "placeholder" as const,
+      iconSeed: nanoid(10),
     });
 
     // Create version 1
@@ -599,6 +600,7 @@ export const deployInternal = internalMutation({
       schedule: manifest.schedule ?? null,
       scheduleInputs: manifest.scheduleInputs ?? null,
       currentVersionId: "placeholder" as const,
+      iconSeed: nanoid(10),
     });
 
     const versionId = await ctx.db.insert("automationVersions", {

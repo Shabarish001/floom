@@ -17,6 +17,7 @@ import { WebhookTab } from "./WebhookTab";
 import { Share2, Pause, Play, MoreHorizontal, Trash2, Globe } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { AppIcon } from "@/components/AppIcon";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -167,11 +168,16 @@ export default function AutomationPage({
       {/* Header */}
       <div className="px-4 py-3 border-b">
         <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2 min-w-0">
-            <Badge variant="secondary">v{automation.currentVersion}</Badge>
-            <h1 className="font-semibold text-foreground truncate">
-              {automation.name}
-            </h1>
+          <div className="flex items-center gap-3 min-w-0">
+            <AppIcon name={automation.name} size="lg" className="shrink-0" />
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary">v{automation.currentVersion}</Badge>
+              </div>
+              <h1 className="font-semibold text-foreground truncate">
+                {automation.name}
+              </h1>
+            </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <Button variant="outline" size="sm" onClick={handleShare}>
