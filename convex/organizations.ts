@@ -10,6 +10,22 @@ export const completeOnboarding = mutation({
   handler: async (ctx, args) => {
     const { orgId } = await requireAuth(ctx);
 
+    // Validate URL server-side if provided
+    if (args.websiteUrl) {
+      try {
+        const parsed = new URL(args.websiteUrl);
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+          throw new Error("Invalid URL: only http and https are allowed");
+        }
+        if (args.websiteUrl.length > 2048) {
+          throw new Error("URL too long");
+        }
+      } catch (e) {
+        if (e instanceof Error && e.message.startsWith("Invalid URL")) throw e;
+        throw new Error("Invalid URL format");
+      }
+    }
+
     const patch: Record<string, unknown> = {
       onboardingComplete: true,
     };
