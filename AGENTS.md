@@ -51,12 +51,14 @@ git clone https://github.com/floomhq/floom.git ~/.claude/skills/floom-repo && ~/
 
 Then use `/floom` in Claude Code to deploy any Python script.
 
----
+## Key conventions
 
-<!-- convex-ai-start -->
-This project uses [Convex](https://convex.dev) as its backend.
+- **Entrypoint**: every automation needs a module-level `def run(...) -> dict:` function
+- **Secrets**: access via `os.environ["SECRET_NAME"]`, never hardcode
+- **Dependencies**: listed in `manifest.json` under `python_dependencies`, pip-installed at runtime
+- **Sandbox**: code executes in E2B sandboxes (EU-hosted, SOC 2 Type II)
+- **Reserved filenames**: do not create `_runner.py` or `_runner_config.json` (used by the platform)
 
-When working on Convex code, **always read `convex/_generated/ai/guidelines.md` first** for important guidelines on how to correctly use Convex APIs and patterns. The file contains rules that override what you may have learned about Convex from training data.
+## Backend
 
-Convex agent skills for common tasks can be installed by running `npx convex ai-files install`.
-<!-- convex-ai-end -->
+This project uses [Convex](https://convex.dev). When working on Convex code, read `convex/_generated/ai/guidelines.md` first for API patterns and constraints.
