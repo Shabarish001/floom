@@ -21,6 +21,7 @@ function generateRawKey(): string {
 }
 
 // Create a new API key for an org. Returns the full key (shown once).
+// Rate-limited: max 1 key creation per org per 60 seconds.
 export const create = mutation({
   args: {
     orgId: v.id("organizations"),
@@ -33,6 +34,20 @@ export const create = mutation({
     // Verify org exists
     const org = await ctx.db.get(args.orgId);
     if (!org) throw new Error("Workspace not found");
+
+    // Rate limit: reject if most recent key was created < 60 seconds ago
+    const existingKeys = await ctx.db
+      .query("apiKeys")
+      .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+      .collect();
+    const now = Date.now();
+    const mostRecent = existingKeys.reduce(
+      (latest, k) => (k.createdAt > latest ? k.createdAt : latest),
+      0,
+    );
+    if (mostRecent > 0 && now - mostRecent < 60_000) {
+      throw new Error("Rate limited: wait 60 seconds between key creations");
+    }
 
     const rawKey = generateRawKey();
     const prefix = rawKey.slice(0, 12);
@@ -108,6 +123,7 @@ export const hasKeys = query({
 
 // Create the first API key for an org (idempotent — skips if keys exist).
 // Returns the raw key, or null if the org already has keys.
+// Rate-limited: max 1 key creation per org per 60 seconds.
 export const createFirstKey = mutation({
   args: { orgId: v.id("organizations") },
   handler: async (ctx, args) => {
@@ -122,6 +138,16 @@ export const createFirstKey = mutation({
       .query("apiKeys")
       .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
       .collect();
+
+    // Rate limit: reject if most recent key was created < 60 seconds ago
+    const now = Date.now();
+    const mostRecent = keys.reduce(
+      (latest, k) => (k.createdAt > latest ? k.createdAt : latest),
+      0,
+    );
+    if (mostRecent > 0 && now - mostRecent < 60_000) {
+      throw new Error("Rate limited: wait 60 seconds between key creations");
+    }
 
     if (keys.some((k) => !k.revokedAt)) return null;
 

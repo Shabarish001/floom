@@ -1,3 +1,9 @@
+// Security: The raw API key is shown exactly once, held in React state only.
+// It is never persisted client-side (no localStorage, no cookies).
+// The Convex mutation returns the raw key before hashing; only the SHA-256
+// hash is stored in the database. On page refresh, the key is lost and the
+// user is redirected to /gallery.
+
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
@@ -109,7 +115,8 @@ export default function WelcomePage() {
               <Key className="size-3.5" />
               <span className="font-medium">API Key</span>
             </div>
-            <div className="flex items-center gap-2">
+            {/* eslint-disable-next-line react/no-unknown-property */}
+            <div className="flex items-center gap-2" data-sensitive="true">
               <code className="flex-1 text-sm font-mono bg-muted px-3 py-2 rounded-lg truncate select-all">
                 {rawKey}
               </code>
