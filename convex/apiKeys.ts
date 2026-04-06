@@ -90,6 +90,58 @@ export const revoke = mutation({
   },
 });
 
+// Check if an org has any (non-revoked) API keys.
+export const hasKeys = query({
+  args: { orgId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return false;
+
+    const firstKey = await ctx.db
+      .query("apiKeys")
+      .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+      .first();
+
+    return firstKey !== null;
+  },
+});
+
+// Create the first API key for an org (idempotent — skips if keys exist).
+// Returns the raw key, or null if the org already has keys.
+export const createFirstKey = mutation({
+  args: { orgId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const org = await ctx.db.get(args.orgId);
+    if (!org) throw new Error("Organization not found");
+
+    // Check if org already has any key
+    const existing = await ctx.db
+      .query("apiKeys")
+      .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+      .first();
+
+    if (existing) return null;
+
+    const rawKey = generateRawKey();
+    const prefix = rawKey.slice(0, 12);
+    const hashedKey = await hashKey(rawKey);
+
+    await ctx.db.insert("apiKeys", {
+      orgId: args.orgId,
+      name: "default",
+      prefix,
+      hashedKey,
+      createdBy: identity.tokenIdentifier,
+      createdAt: Date.now(),
+    });
+
+    return rawKey;
+  },
+});
+
 // Internal: look up an API key by its hash. Used by HTTP auth.
 export const getByHashedKey = internalQuery({
   args: { hashedKey: v.string() },
