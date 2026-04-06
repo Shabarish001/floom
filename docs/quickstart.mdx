@@ -1,0 +1,79 @@
+---
+title: Quickstart
+description: "Deploy your first Python app in 60 seconds."
+---
+
+## 1. Sign up
+
+Go to [dashboard.floom.dev](https://dashboard.floom.dev) and create an account.
+
+## 2. Get your API key
+
+Go to **Settings** and copy your API key. It starts with `floom_`.
+
+## 3. Option A: Deploy with Claude Code
+
+Install the floom skill:
+
+```bash
+git clone https://github.com/floomhq/floom.git ~/.claude/skills/floom-repo && ~/.claude/skills/floom-repo/scripts/setup
+```
+
+Then in Claude Code, type `/floom` and point it at any Python script. It adapts, tests in a sandbox, and deploys.
+
+## 3. Option B: Deploy with the API
+
+Save your API key:
+
+```bash
+mkdir -p ~/.claude
+echo '{"api_key": "floom_YOUR_KEY", "platform_url": "https://dashboard.floom.dev"}' > ~/.claude/floom-config.json
+```
+
+Write a script:
+
+```python
+# main.py
+def run(name: str) -> dict:
+    return {"greeting": f"Hello, {name}!"}
+```
+
+Deploy it:
+
+```bash
+API_KEY="floom_YOUR_KEY"
+BASE="https://dashboard.floom.dev"
+
+# 1. Get upload URL
+UPLOAD=$(curl -s -X POST "$BASE/api/artifacts/upload-url" \
+  -H "Authorization: Bearer $API_KEY")
+
+UPLOAD_URL=$(echo $UPLOAD | python3 -c "import json,sys; print(json.load(sys.stdin)['uploadUrl'])")
+R2_KEY=$(echo $UPLOAD | python3 -c "import json,sys; print(json.load(sys.stdin)['r2Key'])")
+
+# 2. Zip and upload
+zip /tmp/app.zip main.py
+curl -s -X PUT "$UPLOAD_URL" -H "Content-Type: application/zip" --data-binary @/tmp/app.zip
+
+# 3. Create artifact
+curl -s -X POST "$BASE/api/artifacts" \
+  -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{\"manifest\": {\"name\": \"Hello World\", \"description\": \"Greets you by name\", \"inputs\": [{\"name\": \"name\", \"label\": \"Name\", \"type\": \"text\", \"required\": true}], \"outputs\": [{\"name\": \"greeting\", \"label\": \"Greeting\", \"type\": \"text\"}], \"secrets_needed\": [], \"python_dependencies\": []}, \"entrypoint\": \"main.py\", \"r2Key\": \"$R2_KEY\"}"
+
+# 4. Deploy
+ARTIFACT_ID="<from step 3 response>"
+curl -s -X POST "$BASE/api/deploy" \
+  -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{\"artifactId\": \"$ARTIFACT_ID\"}"
+```
+
+The response gives you a live URL. Share it with anyone.
+
+## What just happened?
+
+1. Your code was uploaded as a zip to R2 storage
+2. floom validated the code and manifest
+3. A new automation was created with a web UI, REST API, and shareable URL
+4. Anyone with the link can run your script through the generated UI

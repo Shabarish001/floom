@@ -1,0 +1,29 @@
+---
+title: Publishing
+description: "Share automations publicly or with email-gated access."
+---
+
+## Sharing an automation
+
+Every automation gets a URL at `dashboard.floom.dev/a/<id>`. By default, automations are accessible to anyone with the link.
+
+## Access levels
+
+| Level | Who can run | Use case |
+|-------|------------|----------|
+| **Link access** | Anyone with the URL | Public tools, demos |
+| **Workspace only** | Workspace members | Internal team tools |
+
+## How to share
+
+1. Deploy your automation via the API or Claude Code
+2. Copy the URL from the deploy response
+3. Send it to anyone, or embed it in your docs
+
+Recipients see a clean web UI with your automation's inputs and outputs. No sign-up required to run it.
+
+## Scheduled automations
+
+When you add a `schedule` to the manifest, the automation runs automatically at the specified times. See [Manifest format](/concepts/manifest#scheduling) for cron syntax.
+
+Scheduled runs use `scheduleInputs` as default values. Results are stored in the run history.

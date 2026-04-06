@@ -1,0 +1,111 @@
+---
+title: Artifacts
+description: "Upload code and create artifacts for deployment."
+---
+
+Artifacts are versioned code packages (zip files) that can be tested and deployed as automations. Uploading is a three-step process.
+
+## Step 1: Get upload URL
+
+<Card>
+  **POST** `/api/artifacts/upload-url`
+</Card>
+
+Returns a presigned PUT URL for uploading a zip file to R2 storage.
+
+```bash
+curl -s -X POST "https://dashboard.floom.dev/api/artifacts/upload-url" \
+  -H "Authorization: Bearer $API_KEY"
+```
+
+**Response:**
+
+```json
+{
+  "uploadUrl": "https://r2.example.com/presigned-put-url...",
+  "r2Key": "artifacts/org123/uuid.zip"
+}
+```
+
+## Step 2: Upload the zip
+
+PUT the zip binary to the `uploadUrl` from Step 1:
+
+```bash
+curl -s -X PUT "$UPLOAD_URL" \
+  -H "Content-Type: application/zip" \
+  --data-binary @project.zip
+```
+
+The zip should contain your Python files. Exclude `__pycache__`, `.git`, and `manifest.json`.
+
+## Step 3: Create artifact
+
+<Card>
+  **POST** `/api/artifacts`
+</Card>
+
+Validates the uploaded zip, computes file hashes, and creates the artifact record.
+
+**Body:**
+
+```json
+{
+  "manifest": {
+    "name": "My Automation",
+    "description": "What it does",
+    "inputs": [...],
+    "outputs": [...],
+    "secrets_needed": [],
+    "python_dependencies": []
+  },
+  "entrypoint": "main.py",
+  "r2Key": "artifacts/org123/uuid.zip"
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `manifest` | Yes | Manifest object (see [Manifest format](/concepts/manifest)) |
+| `entrypoint` | Yes | Path to the file with `run()` inside the zip (e.g., `main.py` or `src/main.py`) |
+| `r2Key` | Yes | R2 key from Step 1 |
+
+**Response:**
+
+```json
+{
+  "artifactId": "art_abc123"
+}
+```
+
+**Errors:**
+
+| Status | Cause |
+|--------|-------|
+| `400` | Missing fields, validation error, no `run()` in entrypoint |
+| `413` | Zip exceeds 10MB |
+
+## Download artifact code
+
+<Card>
+  **GET** `/api/artifacts/:id/code`
+</Card>
+
+Returns a presigned download URL and file list for an existing artifact.
+
+```bash
+curl -s "https://dashboard.floom.dev/api/artifacts/$ARTIFACT_ID/code" \
+  -H "Authorization: Bearer $API_KEY"
+```
+
+**Response:**
+
+```json
+{
+  "downloadUrl": "https://r2.example.com/presigned-get-url...",
+  "fileList": [
+    { "path": "main.py", "size": 1234, "hash": "abc..." },
+    { "path": "utils/helpers.py", "size": 567, "hash": "def..." }
+  ]
+}
+```

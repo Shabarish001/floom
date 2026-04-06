@@ -1,6 +1,6 @@
 {
   "$schema": "https://mintlify.com/schema.json",
-  "name": "Deploy Skill",
+  "name": "floom",
   "logo": {
     "dark": "/logo/dark.svg",
     "light": "/logo/light.svg"
@@ -18,7 +18,27 @@
   "navigation": [
     {
       "group": "Get Started",
-      "pages": ["introduction"]
+      "pages": ["introduction", "quickstart", "templates"]
+    },
+    {
+      "group": "Concepts",
+      "pages": [
+        "concepts/manifest",
+        "concepts/apps",
+        "concepts/publishing"
+      ]
+    },
+    {
+      "group": "API Reference",
+      "pages": [
+        "api-reference/authentication",
+        "api-reference/artifacts",
+        "api-reference/deploy",
+        "api-reference/apps",
+        "api-reference/test",
+        "api-reference/runs",
+        "api-reference/secrets"
+      ]
     }
   ]
 }

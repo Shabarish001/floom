@@ -1,15 +1,66 @@
 ---
 title: Introduction
-description: "Welcome to Deploy Skill documentation"
+description: "Deploy Python scripts as cloud automations with a web UI, REST API, and MCP endpoint."
 ---
 
-# Welcome to Deploy Skill
+# What is floom?
 
-Deploy Skill helps you deploy and manage your applications with ease. This documentation will guide you through setup, configuration, and usage.
+floom is the production layer for AI agents. You write a Python function, and floom turns it into:
 
-## Getting Started
+- A **web UI** with typed inputs and outputs anyone can use
+- A **REST API** other services can call
+- An **MCP endpoint** AI agents can discover
+- **Managed secrets**, version history, and scheduling
 
-Follow the guides below to get up and running quickly.
+No Docker. No CI/CD. No YAML. Just Python in, production out.
 
-- **Setup** — Install dependencies and configure your environment
-- **Deploy** — Ship your application to production
+## How it works
+
+```
+Write a run() function → Deploy via AI agent or API → Share a live URL
+```
+
+1. Write a Python script with a `run()` function
+2. Deploy via Claude Code (`/floom`), Cursor, or any MCP-capable agent
+3. floom tests it in an E2B sandbox, then deploys it
+4. You get a shareable URL at `dashboard.floom.dev/a/<id>`
+
+## Who it's for
+
+- **Developers** who build Python automations and need to share them with non-technical people
+- **AI agencies** deploying tools for clients
+- **Anyone using Claude Code or Cursor** who wants to go from localhost to production instantly
+
+## Example
+
+```python
+import os
+from google import genai
+
+def run(url: str) -> dict:
+    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    response = client.models.generate_content(
+        model="gemini-2.0-flash",
+        contents=f"Summarize the company at {url} in 3 sentences."
+    )
+    return {"summary": response.text}
+```
+
+That's it. floom handles sandbox testing, deployment, UI generation, and secret injection.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Deploy your first app in 60 seconds
+  </Card>
+  <Card title="Manifest format" icon="file-code" href="/concepts/manifest">
+    Inputs, outputs, dependencies, secrets
+  </Card>
+  <Card title="API reference" icon="code" href="/api-reference/authentication">
+    Authenticate and call the REST API
+  </Card>
+  <Card title="Templates" icon="copy" href="/templates">
+    Starter scripts to fork and deploy
+  </Card>
+</CardGroup>

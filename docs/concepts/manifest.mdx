@@ -1,0 +1,125 @@
+---
+title: Manifest format
+description: "Define inputs, outputs, dependencies, and secrets for your automation."
+---
+
+The manifest describes your automation's interface. floom uses it to generate the web UI, validate inputs, and install dependencies.
+
+## Full schema
+
+```json
+{
+  "name": "My Automation",
+  "description": "One-sentence description",
+  "schedule": "0 9 * * 1",
+  "scheduleInputs": { "param1": "default_value" },
+  "inputs": [
+    {
+      "name": "param_name",
+      "label": "Human Label",
+      "type": "text",
+      "description": "What to put here",
+      "required": true,
+      "default": "default_value"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "output_key",
+      "label": "Human Label",
+      "type": "text"
+    }
+  ],
+  "secrets_needed": ["GEMINI_API_KEY"],
+  "python_dependencies": ["google-genai", "httpx"],
+  "manifest_version": "1.0"
+}
+```
+
+## Input types
+
+All values are passed to your `run()` function as the Python type shown.
+
+| Type | Python type | Use for | Extra fields |
+|------|-------------|---------|--------------|
+| `text` | `str` | Short strings (name, query, ID) | |
+| `textarea` | `str` | Long text (500+ chars) | |
+| `url` | `str` | Links, API endpoints | |
+| `file` | `str` | File uploads. Receives an R2 URL; download with `requests.get()` | `accept`: e.g. `.pdf,.csv` |
+| `number` | `float`/`int` | Numbers, percentages | `min`, `max` |
+| `enum` | `str` | Fixed choices | `options`: `["opt1", "opt2"]` |
+| `boolean` | `bool` | True/false toggles | |
+| `date` | `str` | ISO 8601 date string (`2024-01-15`) | |
+
+### Input field reference
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | Yes | Must match the `run()` parameter name |
+| `label` | Yes | Display label in the web UI |
+| `type` | Yes | One of the types above |
+| `description` | No | Help text shown below the input |
+| `required` | No | Default `true`. Set `false` for optional inputs |
+| `default` | No | Pre-filled value |
+| `options` | No | For `enum` type only |
+| `accept` | No | For `file` type: accepted extensions |
+| `min`, `max` | No | For `number` type: value bounds |
+
+## Output types
+
+Your `run()` function returns a dict. Each key maps to an output entry.
+
+| Type | Use for | Extra fields |
+|------|---------|--------------|
+| `text` | String output | |
+| `table` | List of dicts | `columns`: `["col1", "col2"]` |
+| `number` | Formatted number | |
+| `html` | Rendered HTML | |
+| `pdf` | PDF document | |
+| `image` | Base64-encoded image | |
+
+## Scheduling
+
+Add `schedule` with a cron string to run automatically. If the automation has required inputs, set `scheduleInputs` with default values.
+
+```json
+{
+  "schedule": "0 9 * * 1",
+  "scheduleInputs": { "query": "weekly report" }
+}
+```
+
+Common patterns:
+- `0 9 * * *` -- every day at 9am
+- `0 9 * * 1` -- every Monday at 9am
+- `0 */6 * * *` -- every 6 hours
+- `0 0 1 * *` -- first of every month
+
+## Dependencies
+
+List pip packages in `python_dependencies`. They are installed before each run.
+
+```json
+{
+  "python_dependencies": ["pandas", "openpyxl", "httpx"]
+}
+```
+
+`requests`, `httpx`, and `anthropic` are always available. Only list additional packages.
+
+## Secrets
+
+List required environment variables in `secrets_needed`. Store them via the [secrets API](/api-reference/secrets) or the dashboard.
+
+```json
+{
+  "secrets_needed": ["GEMINI_API_KEY", "SLACK_WEBHOOK_URL"]
+}
+```
+
+Access them in your function:
+
+```python
+import os
+api_key = os.environ["GEMINI_API_KEY"]
+```

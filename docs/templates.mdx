@@ -1,0 +1,136 @@
+---
+title: Templates
+description: "Starter scripts to fork and deploy."
+---
+
+Copy any of these, customize, and deploy with `/floom` in Claude Code or via the API.
+
+## Company summarizer
+
+Summarize any company from its URL using Gemini.
+
+```python
+import os
+from google import genai
+
+def run(url: str) -> dict:
+    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    response = client.models.generate_content(
+        model="gemini-2.0-flash",
+        contents=f"Summarize the company at {url} in 3 sentences."
+    )
+    return {"summary": response.text}
+```
+
+**Secrets:** `GEMINI_API_KEY` | **Deps:** `google-genai`
+
+---
+
+## Email classifier
+
+Classify email intent with confidence scoring.
+
+```python
+import os, json, re
+from google import genai
+
+def run(email_text: str) -> dict:
+    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    response = client.models.generate_content(
+        model="gemini-2.0-flash",
+        contents=f"""Classify this email intent.
+Return JSON: {{"intent": "interested|counter_offer|rejection|unclear", "confidence": 0.0-1.0, "summary": "one sentence"}}
+Email: {email_text}
+Return ONLY valid JSON."""
+    )
+    cleaned = re.sub(r'```json\s*|\s*```', '', response.text).strip()
+    return json.loads(cleaned)
+```
+
+**Secrets:** `GEMINI_API_KEY` | **Deps:** `google-genai`
+
+---
+
+## CSV analyzer
+
+Upload a CSV and get summary statistics.
+
+```python
+import pandas as pd
+import requests, io
+
+def run(csv_url: str) -> dict:
+    response = requests.get(csv_url)
+    df = pd.read_csv(io.StringIO(response.text))
+    return {
+        "rows": len(df),
+        "columns": list(df.columns),
+        "summary": df.describe().to_dict()
+    }
+```
+
+**Secrets:** none | **Deps:** `pandas`
+
+---
+
+## URL health checker
+
+Check if a list of URLs are reachable.
+
+```python
+import httpx
+
+def run(urls: str) -> dict:
+    url_list = [u.strip() for u in urls.split("\n") if u.strip()]
+    results = []
+    for url in url_list:
+        try:
+            r = httpx.get(url, timeout=10, follow_redirects=True)
+            results.append({"url": url, "status": r.status_code, "ok": r.is_success})
+        except Exception as e:
+            results.append({"url": url, "status": 0, "ok": False, "error": str(e)})
+    return {"results": results}
+```
+
+**Secrets:** none | **Deps:** `httpx`
+
+---
+
+## Text translator
+
+Translate text between languages using Anthropic.
+
+```python
+import os, anthropic
+
+def run(text: str, target_language: str = "Spanish") -> dict:
+    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    message = client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=1024,
+        messages=[{"role": "user", "content": f"Translate to {target_language}:\n\n{text}"}]
+    )
+    return {"translation": message.content[0].text}
+```
+
+**Secrets:** `ANTHROPIC_API_KEY` | **Deps:** `anthropic`
+
+---
+
+## PDF text extractor
+
+Extract text from an uploaded PDF.
+
+```python
+import requests, fitz, io
+
+def run(pdf_url: str) -> dict:
+    response = requests.get(pdf_url)
+    doc = fitz.open(stream=io.BytesIO(response.content), filetype="pdf")
+    pages = []
+    for page in doc:
+        pages.append({"page": page.number + 1, "text": page.get_text()})
+    return {"pages": pages, "total_pages": len(doc)}
+```
+
+**Secrets:** none | **Deps:** `PyMuPDF`
