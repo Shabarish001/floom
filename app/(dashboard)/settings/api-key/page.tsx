@@ -88,7 +88,7 @@ export default function ApiKeyPage() {
           <CardHeader>
             <CardTitle>API Keys</CardTitle>
             <CardDescription>
-              Org-scoped keys to authenticate the{" "}
+              Workspace-scoped keys to authenticate the{" "}
               <code className="font-mono bg-muted px-1 py-0.5 rounded text-xs">
                 floom
               </code>{" "}

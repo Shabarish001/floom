@@ -32,7 +32,7 @@ export const create = mutation({
 
     // Verify org exists
     const org = await ctx.db.get(args.orgId);
-    if (!org) throw new Error("Organization not found");
+    if (!org) throw new Error("Workspace not found");
 
     const rawKey = generateRawKey();
     const prefix = rawKey.slice(0, 12);

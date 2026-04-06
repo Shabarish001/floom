@@ -63,6 +63,8 @@ export function Nav() {
               rootBox: "",
               organizationSwitcherTrigger:
                 "px-2 py-1 rounded text-sm text-gray-600 hover:bg-gray-50 border border-gray-200 transition-colors",
+              organizationSwitcherPopoverActionButton__createOrganization:
+                "hidden",
             },
           }}
         />

@@ -100,12 +100,19 @@ export default defineSchema({
     .index("by_automationId", ["automationId"])
     .index("by_automationId_startedAt", ["automationId", "startedAt"]),
 
-  // Organizations — synced from Clerk or auto-created for personal accounts.
+  // Organizations (displayed as "Workspaces") — synced from Clerk or auto-created for personal accounts.
   organizations: defineTable({
     clerkOrgId: v.string(),
     name: v.string(),
     createdAt: v.number(),
     createdBy: v.string(),
+    websiteUrl: v.optional(v.string()),
+    logoUrl: v.optional(v.string()),
+    brandColors: v.optional(v.array(v.string())),
+    fonts: v.optional(v.array(v.string())),
+    companyName: v.optional(v.string()),
+    companyDescription: v.optional(v.string()),
+    onboardingComplete: v.optional(v.boolean()),
   }).index("by_clerkOrgId", ["clerkOrgId"]),
 
   // Org-scoped API keys. SHA-256 hashed. Full key shown once on creation.
