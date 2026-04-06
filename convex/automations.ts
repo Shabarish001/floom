@@ -442,6 +442,22 @@ export const remove = mutation({
   },
 });
 
+// Update labels on an automation. Saves immediately (no version bump).
+export const updateLabels = mutation({
+  args: {
+    id: v.id("automations"),
+    labels: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { orgId } = await requireAuth(ctx);
+    const automation = await ctx.db.get(args.id);
+    if (!automation || automation.orgId !== orgId) {
+      throw new Error("App not found");
+    }
+    await ctx.db.patch(args.id, { labels: args.labels });
+  },
+});
+
 // Org gallery — all automations for the caller's org.
 export const gallery = query({
   args: {
