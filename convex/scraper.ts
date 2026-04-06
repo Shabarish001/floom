@@ -95,6 +95,7 @@ function extractColors(html: string): string[] {
 
   while ((match = styleRegex.exec(html)) !== null) {
     const styleContent = match[1];
+    brandPropRegex.lastIndex = 0;
     let propMatch;
     while ((propMatch = brandPropRegex.exec(styleContent)) !== null) {
       const val = propMatch[1].trim();
