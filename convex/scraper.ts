@@ -372,6 +372,96 @@ function extractMeta(html: string): {
   };
 }
 
+// --- AI-powered extraction via Gemini (issue #30) ---
+
+interface GeminiExtractionResult {
+  colors: string[];
+  companyName?: string;
+  summary?: string;
+  industry?: string;
+  brandTone?: string;
+}
+
+/**
+ * Send trimmed HTML to Gemini for AI-powered brand analysis.
+ * Falls back gracefully: returns empty result on any failure.
+ */
+async function extractWithGemini(
+  apiKey: string,
+  html: string,
+  url: string
+): Promise<GeminiExtractionResult> {
+  // Trim HTML to first 10K chars (enough for head + hero section)
+  const trimmedHtml = html.slice(0, 10_000);
+
+  const prompt = `Analyze this website HTML and extract branding information. Return ONLY valid JSON, no markdown.
+
+Website URL: ${url}
+
+HTML (first 10K chars):
+${trimmedHtml}
+
+Extract:
+{
+  "primaryColor": "#hex of the main brand color",
+  "secondaryColor": "#hex of the secondary color (or null)",
+  "accentColor": "#hex of the accent/CTA color (or null)",
+  "companyName": "the company or product name",
+  "summary": "one sentence describing what the company does",
+  "industry": "one word category (e.g. fintech, saas, ecommerce, devtools)",
+  "brandTone": "one word (professional, playful, technical, minimal, bold)"
+}`;
+
+  const body = {
+    contents: [
+      {
+        parts: [{ text: prompt }],
+      },
+    ],
+    generationConfig: {
+      temperature: 0.1,
+      maxOutputTokens: 500,
+    },
+  };
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Gemini API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error("No Gemini response text");
+
+  // Parse JSON from response (handle potential markdown code-fence wrapping)
+  const jsonStr = text
+    .replace(/```json\n?/g, "")
+    .replace(/```\n?/g, "")
+    .trim();
+  const result = JSON.parse(jsonStr);
+
+  const colors: string[] = [];
+  if (result.primaryColor) colors.push(result.primaryColor);
+  if (result.secondaryColor) colors.push(result.secondaryColor);
+  if (result.accentColor) colors.push(result.accentColor);
+
+  return {
+    colors,
+    companyName: result.companyName || undefined,
+    summary: result.summary || undefined,
+    industry: result.industry || undefined,
+    brandTone: result.brandTone || undefined,
+  };
+}
+
 // --- Convex action: fetch + extract ---
 
 export const scrapeWorkspaceUrl = internalAction({
@@ -436,6 +526,8 @@ export const scrapeWorkspaceUrl = internalAction({
       name: undefined,
       description: undefined,
     };
+    let industry: string | undefined;
+    let brandTone: string | undefined;
 
     try {
       logoUrl = extractLogo(cleanHtml, baseUrl);
@@ -473,6 +565,32 @@ export const scrapeWorkspaceUrl = internalAction({
       );
     }
 
+    // After regex extraction, try Gemini for AI-powered visual analysis
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    if (geminiApiKey) {
+      try {
+        const aiResults = await extractWithGemini(geminiApiKey, cleanHtml, websiteUrl);
+        // Merge: AI fills gaps where regex found nothing
+        if (brandColors.length === 0 && aiResults.colors.length > 0) {
+          brandColors = aiResults.colors;
+        }
+        if (!meta.name && aiResults.companyName) {
+          meta.name = aiResults.companyName;
+        }
+        if (!meta.description && aiResults.summary) {
+          meta.description = aiResults.summary;
+        }
+        // AI-only fields
+        industry = aiResults.industry;
+        brandTone = aiResults.brandTone;
+      } catch (error) {
+        console.error(
+          "Gemini extraction failed, using regex results only:",
+          error instanceof Error ? error.message : String(error)
+        );
+      }
+    }
+
     await ctx.runMutation(internal.scraper.updateWorkspaceBranding, {
       orgId,
       logoUrl,
@@ -480,6 +598,8 @@ export const scrapeWorkspaceUrl = internalAction({
       fonts: fonts.length > 0 ? fonts : undefined,
       companyName: meta.name,
       companyDescription: meta.description,
+      industry,
+      brandTone,
     });
   },
 });
@@ -494,6 +614,8 @@ export const updateWorkspaceBranding = internalMutation({
     fonts: v.optional(v.array(v.string())),
     companyName: v.optional(v.string()),
     companyDescription: v.optional(v.string()),
+    industry: v.optional(v.string()),
+    brandTone: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { orgId, ...branding } = args;
@@ -508,6 +630,8 @@ export const updateWorkspaceBranding = internalMutation({
       patch.companyName = branding.companyName;
     if (branding.companyDescription !== undefined)
       patch.companyDescription = branding.companyDescription;
+    if (branding.industry !== undefined) patch.industry = branding.industry;
+    if (branding.brandTone !== undefined) patch.brandTone = branding.brandTone;
 
     if (Object.keys(patch).length > 0) {
       await ctx.db.patch(orgId, patch);

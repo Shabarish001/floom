@@ -121,6 +121,9 @@ export default defineSchema({
     companyName: v.optional(v.string()),
     companyDescription: v.optional(v.string()),
     onboardingComplete: v.optional(v.boolean()),
+    // AI-extracted branding fields (populated by Gemini vision, issue #30)
+    industry: v.optional(v.string()),
+    brandTone: v.optional(v.string()),
   }).index("by_clerkOrgId", ["clerkOrgId"]),
 
   // Org-scoped API keys. SHA-256 hashed. Full key shown once on creation.
