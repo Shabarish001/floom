@@ -78,7 +78,7 @@ export function OutputPanel({
       <div className="flex flex-col items-center justify-center h-full min-h-[300px] p-8 text-center">
         <div className="text-muted-foreground/30 text-4xl mb-3">&rarr;</div>
         <p className="text-sm text-muted-foreground">
-          Run this automation to see output here
+          Run this app to see output here
         </p>
       </div>
     );
@@ -110,9 +110,9 @@ export function OutputPanel({
       <div className="p-4">
         <Alert>
           <Clock className="size-4 text-amber-500" />
-          <AlertTitle>Automation timed out (4.5 min limit)</AlertTitle>
+          <AlertTitle>App timed out (4.5 min limit)</AlertTitle>
           <AlertDescription>
-            Try processing fewer items, or ask the automation owner to optimize.
+            Try processing fewer items, or ask the app owner to optimize.
           </AlertDescription>
         </Alert>
       </div>
@@ -157,7 +157,7 @@ function ErrorOutput({ run }: { run: Run }) {
     },
     syntax_error: {
       icon: <XCircle className="size-4 text-destructive" />,
-      title: "Syntax error in automation code",
+      title: "Syntax error in app code",
       detail: `Fix with: /floom fix [url]`,
     },
   };

@@ -59,7 +59,7 @@ export function SecretsTab() {
 
       <Alert className="mb-4">
         <AlertDescription>
-          Secrets are encrypted and shared across all automations in your org.
+          Secrets are encrypted and shared across all apps in your org.
           Values are never visible after saving.
         </AlertDescription>
       </Alert>
@@ -158,7 +158,7 @@ export function SecretsTab() {
               <span className="font-medium text-foreground font-mono">
                 {deleteConfirm}
               </span>
-              ? Automations using this secret will fail until it is re-added.
+              ? Apps using this secret will fail until it is re-added.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

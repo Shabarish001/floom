@@ -62,10 +62,10 @@ export default function PublishedClient({ slug }: { slug: string }) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
         <h1 className="text-2xl font-semibold text-foreground mb-2">
-          Automation not found
+          App not found
         </h1>
         <p className="text-sm text-muted-foreground">
-          This automation doesn&apos;t exist or has been removed.
+          This app doesn&apos;t exist or has been removed.
         </p>
       </div>
     );
@@ -79,7 +79,7 @@ export default function PublishedClient({ slug }: { slug: string }) {
           No longer published
         </h1>
         <p className="text-sm text-muted-foreground">
-          This automation is no longer available.
+          This app is no longer available.
         </p>
         <p className="text-xs text-muted-foreground mt-1">
           Contact the owner for access.
@@ -96,7 +96,7 @@ export default function PublishedClient({ slug }: { slug: string }) {
           {data.name}
         </h1>
         <p className="text-sm text-muted-foreground">
-          Temporarily unavailable. This automation is being updated.
+          Temporarily unavailable. This app is being updated.
         </p>
       </div>
     );
@@ -115,7 +115,7 @@ export default function PublishedClient({ slug }: { slug: string }) {
         <div className="border rounded-lg p-6 max-w-sm mx-auto">
           <Lock className="size-8 text-muted-foreground mx-auto mb-3" />
           <p className="text-sm font-medium mb-4">
-            Sign in to run this automation
+            Sign in to run this app
           </p>
           <SignInButton mode="modal">
             <Button className="w-full">Sign in</Button>
@@ -138,7 +138,7 @@ export default function PublishedClient({ slug }: { slug: string }) {
             You don&apos;t have access
           </p>
           <p className="text-xs text-muted-foreground">
-            This automation is restricted. Contact the owner if you need access.
+            This app is restricted. Contact the owner if you need access.
           </p>
         </div>
       </div>
@@ -202,7 +202,7 @@ export default function PublishedClient({ slug }: { slug: string }) {
             />
           ) : (
             <div className="hidden md:flex flex-col items-center justify-center h-full min-h-[200px] text-center border rounded-lg bg-muted/20">
-              <p className="text-sm text-muted-foreground">Run this automation to see output here</p>
+              <p className="text-sm text-muted-foreground">Run this app to see output here</p>
             </div>
           )}
         </div>
