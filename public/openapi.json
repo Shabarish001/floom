@@ -1,0 +1,1088 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Floom API",
+    "description": "REST API for managing Python automations on the Floom platform. Authenticate with a Bearer token (API key starting with `floom_`) in the Authorization header.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Floom",
+      "url": "https://floom.dev"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://floom.dev",
+      "description": "Production"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/artifacts/upload-url": {
+      "post": {
+        "operationId": "createArtifactUploadUrl",
+        "summary": "Get presigned upload URL",
+        "description": "Step 1 of artifact upload: returns a presigned PUT URL for uploading a zip file to object storage, plus the R2 key to reference in subsequent calls.",
+        "tags": ["Artifacts"],
+        "responses": {
+          "200": {
+            "description": "Presigned upload URL and R2 key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["uploadUrl", "r2Key"],
+                  "properties": {
+                    "uploadUrl": {
+                      "type": "string",
+                      "format": "uri",
+                      "description": "Presigned PUT URL. Upload your zip file here with `Content-Type: application/zip`."
+                    },
+                    "r2Key": {
+                      "type": "string",
+                      "description": "Storage key for the uploaded zip. Pass this to `POST /api/artifacts`."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/api/artifacts": {
+      "post": {
+        "operationId": "createArtifact",
+        "summary": "Create artifact from uploaded zip",
+        "description": "Step 2 of artifact upload: validates the zip referenced by `r2Key`, checks manifest structure, and creates an immutable artifact record. The zip must contain the entrypoint file with a module-level `run()` function.",
+        "tags": ["Artifacts"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["manifest", "entrypoint", "r2Key"],
+                "properties": {
+                  "manifest": { "$ref": "#/components/schemas/Manifest" },
+                  "entrypoint": {
+                    "type": "string",
+                    "description": "Path to the main Python file inside the zip, e.g. `main.py` or `src/main.py`.",
+                    "example": "main.py"
+                  },
+                  "r2Key": {
+                    "type": "string",
+                    "description": "Storage key returned by `POST /api/artifacts/upload-url`."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Artifact created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["artifactId"],
+                  "properties": {
+                    "artifactId": {
+                      "type": "string",
+                      "description": "Convex document ID of the created artifact."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "413": {
+            "description": "Zip file exceeds the 10 MB compressed or 50 MB uncompressed size limit.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/artifacts/{artifactId}/code": {
+      "get": {
+        "operationId": "getArtifactCode",
+        "summary": "Get artifact download URL",
+        "description": "Returns a presigned download URL for the artifact's zip file and the file listing.",
+        "tags": ["Artifacts"],
+        "parameters": [
+          {
+            "name": "artifactId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Artifact document ID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Download URL and file list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["downloadUrl", "fileList"],
+                  "properties": {
+                    "downloadUrl": {
+                      "type": "string",
+                      "format": "uri",
+                      "description": "Presigned GET URL to download the zip (expires in 1 hour)."
+                    },
+                    "fileList": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/FileEntry" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/test": {
+      "post": {
+        "operationId": "createTestRun",
+        "summary": "Run artifact in sandbox",
+        "description": "Executes an artifact in an isolated E2B sandbox before deploying. Optionally waits up to `wait` seconds (max 10) for the result before returning.",
+        "tags": ["Testing"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["artifactId"],
+                "properties": {
+                  "artifactId": {
+                    "type": "string",
+                    "description": "Artifact to test."
+                  },
+                  "inputs": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "Input values matching the manifest's `inputs` definition.",
+                    "default": {}
+                  },
+                  "automationId": {
+                    "type": "string",
+                    "description": "Optional existing automation ID (when testing an update). Provides access to the automation's secrets."
+                  },
+                  "wait": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 10,
+                    "default": 10,
+                    "description": "Seconds to wait for completion before returning. Set to 0 for immediate return."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Test run created. If `wait > 0` and the run completed in time, `status` and `result` are included.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["testRunId"],
+                  "properties": {
+                    "testRunId": {
+                      "type": "string",
+                      "description": "Test run document ID. Poll with `GET /api/test-runs/{id}`."
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": ["pending", "running", "success", "error", "timeout"],
+                      "description": "Present when the run finished within the `wait` window."
+                    },
+                    "result": {
+                      "$ref": "#/components/schemas/TestRun",
+                      "description": "Full test run document, present when the run finished within the `wait` window."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/api/test-runs/{testRunId}": {
+      "get": {
+        "operationId": "getTestRun",
+        "summary": "Poll test run status",
+        "description": "Returns the current state of a test run. Poll until `status` is `success`, `error`, or `timeout`.",
+        "tags": ["Testing"],
+        "parameters": [
+          {
+            "name": "testRunId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Test run document ID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Test run status.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TestRun" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/api/deploy": {
+      "post": {
+        "operationId": "deployAutomation",
+        "summary": "Deploy artifact as new automation",
+        "description": "Creates a new automation from a validated artifact. The automation name and description come from the artifact's manifest.",
+        "tags": ["Automations"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["artifactId"],
+                "properties": {
+                  "artifactId": {
+                    "type": "string",
+                    "description": "Artifact to deploy."
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "Optional override for the automation name (defaults to manifest name)."
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Optional override for the description (defaults to manifest description)."
+                  },
+                  "changeNote": {
+                    "type": "string",
+                    "description": "Optional note describing this deployment."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Automation deployed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["id", "url"],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "Automation document ID."
+                    },
+                    "url": {
+                      "type": "string",
+                      "format": "uri",
+                      "description": "Dashboard URL for the automation."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/api/automations": {
+      "get": {
+        "operationId": "listAutomations",
+        "summary": "List automations",
+        "description": "Returns all automations in the authenticated organization, sorted by most recently created. Supports text search on name and description.",
+        "tags": ["Automations"],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "description": "Case-insensitive search query. Filters by name and description."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of automations.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["automations"],
+                  "properties": {
+                    "automations": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/AutomationSummary" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/api/automations/{automationId}": {
+      "get": {
+        "operationId": "getAutomation",
+        "summary": "Get automation detail",
+        "description": "Returns full automation detail including manifest, file metadata, and current version number.",
+        "tags": ["Automations"],
+        "parameters": [
+          {
+            "name": "automationId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Automation document ID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Automation detail.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AutomationDetail" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/api/automations/{automationId}/update": {
+      "post": {
+        "operationId": "updateAutomation",
+        "summary": "Deploy new version",
+        "description": "Deploys a new artifact as the next version of an existing automation. Increments the version number automatically.",
+        "tags": ["Automations"],
+        "parameters": [
+          {
+            "name": "automationId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Automation document ID."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["artifactId"],
+                "properties": {
+                  "artifactId": {
+                    "type": "string",
+                    "description": "New artifact to deploy as the next version."
+                  },
+                  "changeNote": {
+                    "type": "string",
+                    "description": "Optional note describing this update."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Version updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["id"],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "Automation document ID."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/api/automations/{automationId}/run": {
+      "post": {
+        "operationId": "triggerRun",
+        "summary": "Trigger a run",
+        "description": "Triggers an execution of the automation's current version. Optionally waits up to `wait` seconds (max 10) for the result.",
+        "tags": ["Runs"],
+        "parameters": [
+          {
+            "name": "automationId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Automation document ID."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "inputs": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "Input values matching the manifest's `inputs` definition.",
+                    "default": {}
+                  },
+                  "wait": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 10,
+                    "default": 10,
+                    "description": "Seconds to wait for completion before returning. Set to 0 for immediate return."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Run triggered. If `wait > 0` and the run completed in time, `status` and `result` are included.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["runId"],
+                  "properties": {
+                    "runId": {
+                      "type": "string",
+                      "description": "Run document ID. Poll with `GET /api/runs/{runId}`."
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": ["pending", "running", "success", "error", "timeout"],
+                      "description": "Present when the run finished within the `wait` window."
+                    },
+                    "result": {
+                      "$ref": "#/components/schemas/Run",
+                      "description": "Full run document, present when the run finished within the `wait` window."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/api/automations/{automationId}/rollback": {
+      "post": {
+        "operationId": "rollbackAutomation",
+        "summary": "Rollback to previous version",
+        "description": "Sets the automation's current version pointer to a specific previous version.",
+        "tags": ["Automations"],
+        "parameters": [
+          {
+            "name": "automationId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Automation document ID."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["versionId"],
+                "properties": {
+                  "versionId": {
+                    "type": "string",
+                    "description": "Version document ID to roll back to."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Rollback successful.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["id", "currentVersion"],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "Automation document ID."
+                    },
+                    "currentVersion": {
+                      "type": "integer",
+                      "description": "Version number now active."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/api/secrets": {
+      "post": {
+        "operationId": "upsertSecret",
+        "summary": "Store or update a secret",
+        "description": "Stores an AES-256 encrypted org-scoped secret. If a secret with the same name already exists, its value is updated.",
+        "tags": ["Secrets"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "value"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Secret name (e.g. `OPENAI_API_KEY`)."
+                  },
+                  "value": {
+                    "type": "string",
+                    "description": "Secret value (stored encrypted, never returned in API responses)."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Secret stored.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["name", "stored"],
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "description": "Secret name."
+                    },
+                    "stored": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/api/runs/{runId}": {
+      "get": {
+        "operationId": "getRun",
+        "summary": "Poll run status",
+        "description": "Returns the current state of a run. Poll until `status` is `success`, `error`, or `timeout`.",
+        "tags": ["Runs"],
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Run document ID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Run status.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Run" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "API key starting with `floom_`. Create one in the dashboard under Settings > API Keys."
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Human-readable error message."
+          }
+        }
+      },
+      "Manifest": {
+        "type": "object",
+        "required": ["name", "description", "inputs", "outputs", "secrets_needed", "python_dependencies"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Automation display name."
+          },
+          "description": {
+            "type": "string",
+            "description": "What this automation does."
+          },
+          "schedule": {
+            "type": ["string", "null"],
+            "description": "Cron expression for scheduled runs (5-part cron syntax), or null for manual-only."
+          },
+          "scheduleInputs": {
+            "type": ["object", "null"],
+            "additionalProperties": true,
+            "description": "Default inputs used when the automation runs on schedule."
+          },
+          "inputs": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ManifestInput" }
+          },
+          "outputs": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ManifestOutput" }
+          },
+          "secrets_needed": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Environment variable names the code expects (e.g. `OPENAI_API_KEY`)."
+          },
+          "python_dependencies": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "pip packages to install before execution (e.g. `requests`, `pandas>=2.0`)."
+          },
+          "manifest_version": {
+            "type": "string",
+            "description": "Manifest schema version."
+          }
+        }
+      },
+      "ManifestInput": {
+        "type": "object",
+        "required": ["name", "label", "type"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Input parameter name (must match the `run()` function parameter)."
+          },
+          "label": {
+            "type": "string",
+            "description": "Human-readable label."
+          },
+          "type": {
+            "type": "string",
+            "enum": ["text", "textarea", "url", "file", "number", "enum", "boolean", "date"],
+            "description": "Input type."
+          },
+          "description": {
+            "type": "string",
+            "description": "Help text for this input."
+          },
+          "required": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether this input is required."
+          },
+          "default": {
+            "description": "Default value for this input."
+          },
+          "options": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Allowed values (only for `enum` type)."
+          },
+          "accept": {
+            "type": "string",
+            "description": "Accepted MIME types (only for `file` type)."
+          },
+          "min": {
+            "type": "number",
+            "description": "Minimum value (only for `number` type)."
+          },
+          "max": {
+            "type": "number",
+            "description": "Maximum value (only for `number` type)."
+          }
+        }
+      },
+      "ManifestOutput": {
+        "type": "object",
+        "required": ["name", "label", "type"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Output key name (must be a key in the dict returned by `run()`)."
+          },
+          "label": {
+            "type": "string",
+            "description": "Human-readable label."
+          },
+          "type": {
+            "type": "string",
+            "enum": ["text", "table", "number", "html", "pdf", "image"],
+            "description": "Output type. Determines how the dashboard renders the value."
+          },
+          "columns": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Column headers (only for `table` type)."
+          }
+        }
+      },
+      "FileEntry": {
+        "type": "object",
+        "required": ["path", "size", "hash"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "File path within the zip."
+          },
+          "size": {
+            "type": "integer",
+            "description": "Uncompressed file size in bytes."
+          },
+          "hash": {
+            "type": "string",
+            "description": "SHA-256 hash of the file content."
+          }
+        }
+      },
+      "AutomationSummary": {
+        "type": "object",
+        "required": ["id", "name", "description", "status", "currentVersion", "createdAt", "url"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Automation document ID."
+          },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["active", "deploying", "failed"]
+          },
+          "schedule": {
+            "type": ["string", "null"],
+            "description": "Cron expression, or null."
+          },
+          "scheduleEnabled": {
+            "type": "boolean",
+            "default": true
+          },
+          "currentVersion": {
+            "type": "integer",
+            "description": "Current version number."
+          },
+          "createdAt": {
+            "type": "number",
+            "description": "Unix timestamp in milliseconds."
+          },
+          "lastRunStatus": {
+            "type": ["string", "null"],
+            "enum": ["pending", "running", "success", "error", "timeout", null]
+          },
+          "lastRunAt": {
+            "type": ["number", "null"],
+            "description": "Unix timestamp (ms) of the last run, or null."
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Dashboard URL."
+          }
+        }
+      },
+      "AutomationDetail": {
+        "type": "object",
+        "required": ["id", "name", "description", "status", "currentVersion", "createdAt", "url"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Automation document ID."
+          },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["active", "deploying", "failed"]
+          },
+          "schedule": {
+            "type": ["string", "null"]
+          },
+          "scheduleEnabled": {
+            "type": "boolean",
+            "default": true
+          },
+          "createdAt": {
+            "type": "number",
+            "description": "Unix timestamp in milliseconds."
+          },
+          "currentVersion": {
+            "type": "integer"
+          },
+          "entrypoint": {
+            "type": ["string", "null"],
+            "description": "Main Python file path."
+          },
+          "fileList": {
+            "type": ["array", "null"],
+            "items": { "$ref": "#/components/schemas/FileEntry" }
+          },
+          "fileCount": {
+            "type": ["integer", "null"]
+          },
+          "totalSize": {
+            "type": ["integer", "null"],
+            "description": "Total uncompressed size in bytes."
+          },
+          "manifest": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/Manifest" },
+              { "type": "null" }
+            ]
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Dashboard URL."
+          }
+        }
+      },
+      "TestRun": {
+        "type": "object",
+        "required": ["_id", "orgId", "artifactId", "status", "startedAt"],
+        "properties": {
+          "_id": {
+            "type": "string",
+            "description": "Test run document ID."
+          },
+          "orgId": { "type": "string" },
+          "automationId": {
+            "type": ["string", "null"],
+            "description": "Present when testing an update to an existing automation."
+          },
+          "artifactId": { "type": "string" },
+          "inputs": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "outputs": {
+            "description": "Run outputs (dict returned by `run()`), or null if not finished."
+          },
+          "logs": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "running", "success", "error", "timeout"]
+          },
+          "errorType": {
+            "type": ["string", "null"],
+            "enum": ["timeout", "syntax_error", "runtime_error", "missing_secret", "sandbox_error", null]
+          },
+          "error": {
+            "type": ["string", "null"]
+          },
+          "durationMs": {
+            "type": ["number", "null"],
+            "description": "Total execution time in milliseconds."
+          },
+          "startedAt": {
+            "type": "number",
+            "description": "Unix timestamp in milliseconds."
+          },
+          "finishedAt": {
+            "type": ["number", "null"],
+            "description": "Unix timestamp in milliseconds, or null if still running."
+          }
+        }
+      },
+      "Run": {
+        "type": "object",
+        "required": ["_id", "automationId", "versionId", "status", "startedAt"],
+        "properties": {
+          "_id": {
+            "type": "string",
+            "description": "Run document ID."
+          },
+          "automationId": { "type": "string" },
+          "versionId": { "type": "string" },
+          "inputs": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "outputs": {
+            "description": "Run outputs (dict returned by `run()`), or null if not finished."
+          },
+          "logs": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "running", "success", "error", "timeout"]
+          },
+          "errorType": {
+            "type": ["string", "null"],
+            "enum": ["timeout", "syntax_error", "runtime_error", "missing_secret", "sandbox_error", null]
+          },
+          "error": {
+            "type": ["string", "null"]
+          },
+          "triggeredBy": {
+            "type": "string",
+            "enum": ["manual", "skill", "schedule", "published"]
+          },
+          "durationMs": {
+            "type": ["number", "null"],
+            "description": "Total execution time in milliseconds."
+          },
+          "startedAt": {
+            "type": "number",
+            "description": "Unix timestamp in milliseconds."
+          },
+          "finishedAt": {
+            "type": ["number", "null"],
+            "description": "Unix timestamp in milliseconds, or null if still running."
+          }
+        }
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Missing, invalid, or revoked API key.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "The resource does not belong to the API key's organization.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource not found.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" }
+          }
+        }
+      },
+      "BadRequest": {
+        "description": "Invalid request parameters.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Artifacts",
+      "description": "Upload and manage code artifacts (zip files containing Python automation code)."
+    },
+    {
+      "name": "Testing",
+      "description": "Run artifacts in a sandbox before deploying."
+    },
+    {
+      "name": "Automations",
+      "description": "Deploy, list, update, and manage automations."
+    },
+    {
+      "name": "Runs",
+      "description": "Trigger and monitor automation executions."
+    },
+    {
+      "name": "Secrets",
+      "description": "Manage org-scoped encrypted secrets available to automations at runtime."
+    }
+  ]
+}
