@@ -22,6 +22,7 @@ export default function WelcomePage() {
   const router = useRouter();
   const [orgId, setOrgId] = useState<Id<"organizations"> | null>(null);
   const [rawKey, setRawKey] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState(false);
   const [copiedDeploy, setCopiedDeploy] = useState(false);
   const [copiedInstall, setCopiedInstall] = useState(false);
@@ -45,10 +46,27 @@ export default function WelcomePage() {
     if (!isAuthenticated || !user) return;
     upsertUser({ email: user.primaryEmailAddress?.emailAddress ?? "" })
       .then((result) => {
+        setError(null);
         if (result?.orgId) setOrgId(result.orgId);
       })
-      .catch(() => {});
+      .catch((error) => {
+        console.error("Workspace setup failed:", error);
+        setError("Failed to initialize workspace. Please check your setup.");
+      });
   }, [isAuthenticated, upsertUser, user]);
+
+  useEffect(() => {
+    if (rawKey || error) return;
+
+    const timeout = setTimeout(() => {
+      setError((prev) =>
+        prev ??
+        "Workspace setup is taking too long. Please check your configuration."
+      );
+    }, 10000);
+
+    return () => clearTimeout(timeout);
+  }, [rawKey, error]);
 
   // If returning user already has keys, redirect to gallery
   useEffect(() => {
@@ -85,7 +103,19 @@ export default function WelcomePage() {
     setTimeout(() => setter(false), 2000);
   }
 
-  // Show nothing while loading/redirecting
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white px-4">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <p className="text-lg font-medium text-destructive">{error}</p>
+          <Button onClick={() => window.location.reload()}>
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (!rawKey) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">

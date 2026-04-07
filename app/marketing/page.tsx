@@ -43,7 +43,10 @@ export default function MarketingPage() {
           );
         }
       })
-      .catch(() => {});
+      .catch((error) => {
+  console.error("Workspace setup failed:", error);
+  setError("Failed to initialize workspace. Please check your setup.");
+});
   }, []);
 
   useEffect(() => {
