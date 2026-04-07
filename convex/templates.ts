@@ -1,5 +1,6 @@
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import { requireAuth } from "./lib/auth";
 
 // Static template definitions — embedded from templates/ directory at build time.
@@ -598,6 +599,8 @@ export const list = query({
 });
 
 // Deploy a template as a new automation in the user's workspace.
+// Creates the automation shell immediately, then schedules an action to
+// upload template code to R2 and create a validated artifact.
 export const deploy = mutation({
   args: {
     slug: v.string(),
@@ -610,53 +613,65 @@ export const deploy = mutation({
       throw new Error(`Template not found: ${args.slug}`);
     }
 
-    // Create artifact with template code stored inline in the manifest.
-    // The executor detects r2Key starting with "template:" and reads
-    // manifest.template_code instead of downloading from R2.
-    const codeBytes = new TextEncoder().encode(template.code);
-    const hashArray = Array.from(
-      new Uint8Array(await crypto.subtle.digest("SHA-256", codeBytes))
-    );
-    const codeHash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-    const artifactId = await ctx.db.insert("artifacts", {
-      orgId,
-      manifest: { ...template.manifest, template_code: template.code },
-      entrypoint: "main.py",
-      r2Key: `template:${template.slug}`,
-      fileList: [{ path: "main.py", size: codeBytes.length, hash: codeHash }],
-      totalSize: codeBytes.length,
-      fileCount: 1,
-      createdAt: Date.now(),
-      createdBy: userId,
-    });
-
-    // Create automation
+    // Create automation in "deploying" state
     const automationId = await ctx.db.insert("automations", {
       name: template.manifest.name,
       description: template.manifest.description,
       createdBy: userId,
       orgId,
       createdAt: Date.now(),
-      status: "active",
+      status: "deploying",
       schedule: null,
       scheduleInputs: null,
       currentVersionId: "placeholder" as const,
       labels: template.labels,
     });
 
-    // Create version 1
-    const versionId = await ctx.db.insert("automationVersions", {
-      automationId,
-      version: 1,
-      artifactId,
-      createdAt: Date.now(),
-      createdBy: userId,
-      changeNote: `Deployed from template: ${template.name}`,
-    });
-
-    // Patch automation with real version ID
-    await ctx.db.patch(automationId, { currentVersionId: versionId });
+    // Schedule action to create zip, upload to R2, validate, and finalize
+    await ctx.scheduler.runAfter(
+      0,
+      internal.templateActions.deployTemplateArtifact,
+      { automationId, orgId, slug: args.slug, userId }
+    );
 
     return { id: automationId };
+  },
+});
+
+// Called by deployTemplateArtifact action on success.
+export const finalizeDeployment = internalMutation({
+  args: {
+    automationId: v.id("automations"),
+    artifactId: v.id("artifacts"),
+    userId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const automation = await ctx.db.get(args.automationId);
+    if (!automation) throw new Error("Automation not found");
+
+    const versionId = await ctx.db.insert("automationVersions", {
+      automationId: args.automationId,
+      version: 1,
+      artifactId: args.artifactId,
+      createdAt: Date.now(),
+      createdBy: args.userId,
+      changeNote: `Deployed from template: ${automation.name}`,
+    });
+
+    await ctx.db.patch(args.automationId, {
+      currentVersionId: versionId,
+      status: "active",
+    });
+  },
+});
+
+// Called by deployTemplateArtifact action on failure.
+export const failDeployment = internalMutation({
+  args: {
+    automationId: v.id("automations"),
+    error: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.automationId, { status: "failed" });
   },
 });

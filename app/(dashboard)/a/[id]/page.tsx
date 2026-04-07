@@ -159,6 +159,18 @@ export default function AutomationPage({
     );
   }
 
+  if (automation.status === "deploying") {
+    return (
+      <div className="min-h-screen bg-background">
+        <Nav />
+        <div className="flex flex-col items-center justify-center h-64 gap-3">
+          <Skeleton className="h-4 w-32" />
+          <p className="text-sm text-muted-foreground">Setting up your automation...</p>
+        </div>
+      </div>
+    );
+  }
+
   const lastRun = automation.runs?.[0];
 
   return (
