@@ -241,7 +241,7 @@ export function OnboardingBanner({
               </span>
               <div>
                 <h3 className="font-semibold text-foreground text-sm">
-                  Browse templates
+                  Start from a template
                 </h3>
                 <p className="text-xs text-muted-foreground mt-1 max-w-[220px] mx-auto">
                   Pick a starter app and customize it. Web scrapers, PDF
