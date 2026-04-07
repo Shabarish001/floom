@@ -64,6 +64,7 @@ pre {
   --grain-opacity: 0.12;
   --grain-blend: multiply;
   --floom-tab-pill-bg: rgba(0, 0, 0, 0.05);
+  --floom-code-bg: #f8f6f2;
   --floom-bg: #fafaf7;
   --floom-card-bg: #ffffff;
   --floom-bg-tertiary: #f5f4f0;
@@ -152,6 +153,7 @@ pre {
   --grain-opacity: 0.12;
   --grain-blend: multiply;
   --floom-tab-pill-bg: rgba(0, 0, 0, 0.05);
+  --floom-code-bg: #f8f6f2;
   --floom-bg: #fafaf7;
   --floom-card-bg: #ffffff;
   --floom-bg-tertiary: #f5f4f0;
@@ -275,6 +277,7 @@ pre {
   --floom-outline-border: rgba(255, 255, 255, 0.08);
   --floom-check-muted: #5A5850;
   --floom-tab-pill-bg: rgba(255, 255, 255, 0.07);
+  --floom-code-bg: #1a1a1a;
   --floom-blob-opacity: 0.4;
   --floom-section-alt: #181614;
   --floom-section-muted: #0B0A09;
@@ -766,9 +769,7 @@ select {
 }
 
 /* Light mode code textarea */
-[data-theme="light"] .code-textarea {
-  background: #F8F6F2 !important;
-}
+/* code-textarea background handled by --floom-code-bg variable */
 
 /* Light mode mockup frame overrides */
 [data-theme="light"] .mockup-frame::before {
@@ -963,9 +964,9 @@ select {
   }
 }
 
-/* ══════ LIGHT-MODE CODE TEXTAREA ══════ */
+/* ══════ CODE TEXTAREA ══════ */
 .code-textarea {
-  background: #f8f6f2 !important;
+  background: var(--floom-code-bg, #f8f6f2);
 }
 
 /* ══════ REDUCED MOTION ══════ */
@@ -1126,6 +1127,7 @@ select {
   --floom-outline-border: rgba(255, 255, 255, 0.08);
   --floom-check-muted: #5A5850;
   --floom-tab-pill-bg: rgba(255, 255, 255, 0.07);
+  --floom-code-bg: #1a1a1a;
   --floom-blob-opacity: 0.4;
   --floom-section-alt: #181614;
   --floom-section-muted: #0B0A09;
