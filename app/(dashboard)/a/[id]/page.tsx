@@ -13,7 +13,7 @@ import { RunHistory } from "./RunHistory";
 
 import { VersionsTab } from "./VersionsTab";
 import { WebhookTab } from "./WebhookTab";
-import { Share2, Pause, Play, MoreHorizontal, Trash2, Globe } from "lucide-react";
+import { Share2, Pause, Play, MoreHorizontal, Trash2, Globe, Loader2, Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { AppIcon } from "@/components/AppIcon";
@@ -162,9 +162,31 @@ export default function AutomationPage({
     return (
       <div className="min-h-screen bg-background">
         <Nav />
-        <div className="flex flex-col items-center justify-center h-64 gap-3">
-          <Skeleton className="h-4 w-32" />
-          <p className="text-sm text-muted-foreground">Setting up your automation...</p>
+        <div className="flex flex-col items-center justify-center h-[70vh] gap-6 animate-in fade-in duration-300">
+          <div className="relative">
+            <div className="absolute inset-0 rounded-full bg-primary/10 animate-ping" style={{ animationDuration: "1.5s" }} />
+            <div className="relative flex items-center justify-center w-14 h-14 rounded-full bg-primary/10">
+              <Loader2 className="w-7 h-7 text-primary animate-spin" />
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center gap-1.5">
+            <p className="text-base font-medium">Setting up your automation</p>
+            <p className="text-sm text-muted-foreground">This will only take a moment</p>
+          </div>
+
+          <div className="flex flex-col gap-2.5 mt-2">
+            {["Creating environment", "Installing dependencies", "Almost ready"].map((step, i) => (
+              <div
+                key={step}
+                className="flex items-center gap-2.5 text-sm text-muted-foreground animate-in fade-in slide-in-from-bottom-2 fill-mode-both"
+                style={{ animationDelay: `${i * 600}ms`, animationDuration: "400ms" }}
+              >
+                <Check className="w-3.5 h-3.5 text-primary" />
+                {step}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
