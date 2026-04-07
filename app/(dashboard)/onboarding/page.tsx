@@ -5,9 +5,11 @@
 // 2. UserSync (ConvexClientProvider) creates org record in Convex
 // 3. needsOnboarding query returns true (onboardingComplete is unset)
 // 4. OnboardingRedirect sends user here
-// 5. User enters website URL (or skips)
+// 5. User enters optional workspace name and clicks "Get started"
 // 6. completeOnboarding mutation sets onboardingComplete = true
-// 7. Redirect to /gallery (or /welcome once #12 is merged)
+// 7. Redirect to /gallery
+//
+// URL/brand customization moved to Settings > Workspace to reduce onboarding friction.
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -17,10 +19,10 @@ import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Globe, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 export default function OnboardingPage() {
-  const [url, setUrl] = useState("");
+  const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -41,52 +43,14 @@ export default function OnboardingPage() {
     }
   }, [needsOnboarding, router]);
 
-  function normalizeUrl(input: string): string {
-    const trimmed = input.trim();
-    if (!trimmed) return "";
-    if (!/^https?:\/\//i.test(trimmed)) {
-      return `https://${trimmed}`;
-    }
-    return trimmed;
-  }
-
-  function isValidUrl(input: string): boolean {
-    try {
-      const parsed = new URL(input);
-      return parsed.protocol === "http:" || parsed.protocol === "https:";
-    } catch {
-      return false;
-    }
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-
-    const normalized = normalizeUrl(url);
-    if (normalized && !isValidUrl(normalized)) {
-      setError("Please enter a valid URL (e.g. example.com)");
-      return;
-    }
-
     setSubmitting(true);
     try {
       await completeOnboarding({
-        websiteUrl: normalized || undefined,
+        name: name.trim() || undefined,
       });
-      router.push("/gallery");
-    } catch (err) {
-      console.error(err);
-      setError("Something went wrong. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleSkip() {
-    setSubmitting(true);
-    try {
-      await completeOnboarding({});
       router.push("/gallery");
     } catch (err) {
       console.error(err);
@@ -101,63 +65,37 @@ export default function OnboardingPage() {
       <div className="w-full max-w-sm px-4">
         <div className="text-center mb-8">
           <h1 className="text-lg font-semibold text-gray-900">
-            Set up your workspace
+            Welcome to Floom
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Enter your company website so Floom can pull in your brand assets
-            automatically.
+            Let&apos;s set up your workspace. You can customize branding later
+            in Settings.
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="website-url">Company website</Label>
-            <div className="relative">
-              <Globe
-                size={14}
-                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
-              />
-              <Input
-                id="website-url"
-                type="text"
-                placeholder="example.com"
-                value={url}
-                onChange={(e) => {
-                  setUrl(e.target.value);
-                  setError(null);
-                }}
-                className="pl-8"
-                autoFocus
-              />
-            </div>
-            {error && (
-              <p className="text-xs text-destructive">{error}</p>
-            )}
+            <Label htmlFor="workspace-name">Workspace name (optional)</Label>
+            <Input
+              id="workspace-name"
+              type="text"
+              placeholder="e.g. Acme Corp"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                setError(null);
+              }}
+              autoFocus
+            />
           </div>
 
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={submitting || !url.trim()}
-          >
-            {submitting ? "Setting up..." : "Continue"}
+          {error && <p className="text-xs text-destructive">{error}</p>}
+
+          <Button type="submit" className="w-full" disabled={submitting}>
+            {submitting ? "Setting up..." : "Get started"}
             {!submitting && <ArrowRight size={14} className="ml-1.5" />}
           </Button>
         </form>
-
-        <div className="mt-4 text-center">
-          <button
-            type="button"
-            onClick={handleSkip}
-            disabled={submitting}
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Skip for now
-          </button>
-          <p className="text-xs text-muted-foreground/60 mt-1">
-            For solo devs or hobbyists
-          </p>
-        </div>
       </div>
     </div>
   );

@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
 const sections = [
+  { href: "/settings/workspace", label: "Workspace" },
   { href: "/settings/api-key", label: "API Key" },
   { href: "/settings/secrets", label: "Workspace Secrets" },
 ];
