@@ -2,8 +2,8 @@
 
 import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import {
   Search,
@@ -47,6 +47,14 @@ import { AutomationListRow } from "@/components/AutomationListRow";
 const STORAGE_KEY_VIEW = "floom-gallery-view";
 
 export default function GalleryPage() {
+  return (
+    <Suspense>
+      <GalleryContent />
+    </Suspense>
+  );
+}
+
+function GalleryContent() {
   const [query, setQuery] = useState("");
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [deployingSlug, setDeployingSlug] = useState<string | null>(null);
@@ -59,7 +67,17 @@ export default function GalleryPage() {
   });
   const [activeLabel, setActiveLabel] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { isAuthenticated } = useConvexAuth();
+
+  // Detect if user just came from /welcome to avoid showing redundant deploy instructions
+  const [cameFromWelcome, setCameFromWelcome] = useState(false);
+  useEffect(() => {
+    if (searchParams.get("from") === "welcome") {
+      setCameFromWelcome(true);
+      router.replace("/gallery");
+    }
+  }, [searchParams, router]);
 
   function handleViewChange(mode: "grid" | "list") {
     setViewMode(mode);
@@ -84,9 +102,10 @@ export default function GalleryPage() {
     }
   };
 
-  // True empty state: user has 0 automations and is not searching
+  // True empty state: user has 0 automations and is not searching.
+  // Skip if user just came from /welcome (they already saw deploy instructions there).
   const showTemplates =
-    automations !== undefined && automations.length === 0 && !query;
+    automations !== undefined && automations.length === 0 && !query && !cameFromWelcome;
 
   // Filter by search query
   const searchFiltered = automations?.filter((a: Automation) => {
