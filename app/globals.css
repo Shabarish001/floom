@@ -201,10 +201,19 @@ select {
   transition:
     opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1),
     transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: revealFallback 0s 1.5s forwards;
 }
 [data-reveal="visible"] {
   opacity: 1;
   transform: translateY(0);
+  animation: none;
+}
+
+@keyframes revealFallback {
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* ══════ THEMED LINK / OUTLINE BTN ══════ */
@@ -519,10 +528,12 @@ select {
   transition:
     opacity 0.4s ease,
     transform 0.4s ease;
+  animation: revealFallback 0s 2s forwards;
 }
 [data-reveal="visible"] .step-stagger {
   opacity: 1;
   transform: none;
+  animation: none;
 }
 [data-reveal="visible"] .step-stagger:nth-child(1) {
   transition-delay: 0.15s;
@@ -545,10 +556,12 @@ select {
     opacity 0.5s ease,
     transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
   transition-delay: 1.3s;
+  animation: revealFallback 0s 2.5s forwards;
 }
 [data-reveal="visible"] .counter-reveal {
   opacity: 1;
   transform: none;
+  animation: none;
 }
 
 /* ══════ GRADIENT TEXT ══════ */
