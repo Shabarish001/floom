@@ -13,7 +13,8 @@ import { RunHistory } from "./RunHistory";
 
 import { VersionsTab } from "./VersionsTab";
 import { WebhookTab } from "./WebhookTab";
-import { Share2, Pause, Play, MoreHorizontal, Trash2, Globe, Loader2, Check } from "lucide-react";
+import { SharePopover } from "./SharePopover";
+import { Share2, Pause, Play, MoreHorizontal, Trash2, Loader2, Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { AppIcon } from "@/components/AppIcon";
@@ -34,10 +35,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { LabelsEditor } from "@/components/automation/LabelsEditor";
 
 export default function AutomationPage({
@@ -55,25 +53,12 @@ export default function AutomationPage({
   const router = useRouter();
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showPublishDialog, setShowPublishDialog] = useState(false);
-  const [publishAccess, setPublishAccess] = useState<"public" | "email">("public");
-  const [publishEmails, setPublishEmails] = useState("");
-  const [publishCopied, setPublishCopied] = useState(false);
+  const [showSharePopover, setShowSharePopover] = useState(false);
 
   const setScheduleEnabled = useMutation(api.automations.setScheduleEnabled);
   const triggerRun = useMutation(api.runs.trigger);
   const removeAutomation = useMutation(api.automations.remove);
-  const publishAutomation = useMutation(api.automations.publish);
-  const unpublishAutomation = useMutation(api.automations.unpublish);
-  const updatePublishAccess = useMutation(api.automations.updatePublishAccess);
-
-  const handleShare = useCallback(() => {
-    navigator.clipboard.writeText(window.location.href);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }, []);
 
   const handleToggleSchedule = useCallback(async () => {
     if (!automation) return;
@@ -106,35 +91,6 @@ export default function AutomationPage({
     [params.id, triggerRun]
   );
 
-  const handlePublish = useCallback(async () => {
-    if (!automation) return;
-    await publishAutomation({
-      automationId: params.id as Id<"automations">,
-      access: publishAccess,
-      allowedEmails:
-        publishAccess === "email"
-          ? publishEmails
-              .split(",")
-              .map((e) => e.trim())
-              .filter(Boolean)
-          : undefined,
-    });
-  }, [automation, params.id, publishAutomation, publishAccess, publishEmails]);
-
-  const handleUnpublish = useCallback(async () => {
-    await unpublishAutomation({
-      automationId: params.id as Id<"automations">,
-    });
-  }, [params.id, unpublishAutomation]);
-
-  const handleCopyPublishedUrl = useCallback(() => {
-    if (!automation?.publishedSlug) return;
-    navigator.clipboard.writeText(
-      `${window.location.origin}/p/${automation.publishedSlug}`
-    );
-    setPublishCopied(true);
-    setTimeout(() => setPublishCopied(false), 2000);
-  }, [automation]);
 
   if (automation === undefined) {
     return (
@@ -213,19 +169,12 @@ export default function AutomationPage({
             </div>
           </div>
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-            <Button variant="outline" size="sm" onClick={handleShare} className="hidden sm:inline-flex">
-              <Share2 className="size-3.5" />
-              {copied ? "Copied!" : "Share"}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowPublishDialog(true)}
-              className="hidden sm:inline-flex"
-            >
-              <Globe className="size-3.5" />
-              {automation.publishedAt ? "Published" : "Publish"}
-            </Button>
+            <SharePopover automation={automation}>
+              <Button variant="outline" size="sm" className="hidden sm:inline-flex">
+                <Share2 className="size-3.5" />
+                Share
+              </Button>
+            </SharePopover>
             {automation.isOwner && automation.schedule && (
               <Button
                 variant="outline"
@@ -261,18 +210,11 @@ export default function AutomationPage({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  onClick={handleShare}
+                  onClick={() => setShowSharePopover(true)}
                   className="sm:hidden"
                 >
                   <Share2 />
-                  {copied ? "Copied!" : "Share"}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setShowPublishDialog(true)}
-                  className="sm:hidden"
-                >
-                  <Globe />
-                  {automation.publishedAt ? "Published" : "Publish"}
+                  Share
                 </DropdownMenuItem>
                 {automation.isOwner && automation.schedule && (
                   <DropdownMenuItem
@@ -410,91 +352,14 @@ export default function AutomationPage({
         </DialogContent>
       </Dialog>
 
-      {/* Publish dialog */}
-      <Dialog open={showPublishDialog} onOpenChange={setShowPublishDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {automation.publishedAt ? "Published" : "Publish app"}
-            </DialogTitle>
-            <DialogDescription>
-              {automation.publishedAt
-                ? "This app is live. Anyone with the link can run it."
-                : "Create a public link for this app."}
-            </DialogDescription>
-          </DialogHeader>
-
-          {automation.publishedAt ? (
-            <div className="space-y-4">
-              <div>
-                <Label className="text-xs text-muted-foreground">
-                  Published URL
-                </Label>
-                <div className="flex gap-2 mt-1">
-                  <Input
-                    value={`${typeof window !== "undefined" ? window.location.origin : ""}/p/${automation.publishedSlug}`}
-                    readOnly
-                    className="text-sm"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleCopyPublishedUrl}
-                  >
-                    {publishCopied ? "Copied!" : "Copy"}
-                  </Button>
-                </div>
-              </div>
-              <Separator />
-              <DialogFooter className="flex-row gap-2 sm:justify-between">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleUnpublish}
-                >
-                  Unpublish
-                </Button>
-              </DialogFooter>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex gap-2">
-                <Button
-                  variant={publishAccess === "public" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setPublishAccess("public")}
-                >
-                  Public
-                </Button>
-                <Button
-                  variant={publishAccess === "email" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setPublishAccess("email")}
-                >
-                  By Email
-                </Button>
-              </div>
-              {publishAccess === "email" && (
-                <div>
-                  <Label htmlFor="emails" className="text-sm">
-                    Allowed emails
-                  </Label>
-                  <Input
-                    id="emails"
-                    placeholder="email@example.com, another@example.com"
-                    value={publishEmails}
-                    onChange={(e) => setPublishEmails(e.target.value)}
-                    className="mt-1"
-                  />
-                </div>
-              )}
-              <DialogFooter>
-                <Button onClick={handlePublish}>Publish</Button>
-              </DialogFooter>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Mobile share popover (controlled by dropdown menu) */}
+      <SharePopover
+        automation={automation}
+        open={showSharePopover}
+        onOpenChange={setShowSharePopover}
+      >
+        <span />
+      </SharePopover>
     </div>
   );
 }

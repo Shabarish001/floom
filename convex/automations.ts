@@ -1,8 +1,14 @@
-import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
+import {
+  mutation,
+  query,
+  internalMutation,
+  internalQuery,
+} from "./_generated/server";
 import { v } from "convex/values";
 import { nanoid } from "nanoid";
 import { requireAuth, optionalAuth } from "./lib/auth";
 import { sha256Hash } from "./lib/crypto";
+import { internal } from "./_generated/api";
 
 function isOwner(createdBy: string, userId: string): boolean {
   return createdBy === userId || userId.endsWith(`|${createdBy}`);
@@ -45,9 +51,10 @@ export const list = query({
           .order("desc")
           .first();
 
-        const versionDoc = a.currentVersionId !== "placeholder"
-          ? await ctx.db.get(a.currentVersionId)
-          : null;
+        const versionDoc =
+          a.currentVersionId !== "placeholder"
+            ? await ctx.db.get(a.currentVersionId)
+            : null;
 
         return {
           ...a,
@@ -375,12 +382,16 @@ export const update = mutation({
     if (!artifact) throw new Error("Artifact not found");
     if (artifact.orgId !== orgId) throw new Error("Forbidden");
 
-    const manifest = artifact.manifest as { name?: string; description?: string };
+    const manifest = artifact.manifest as {
+      name?: string;
+      description?: string;
+    };
 
     // Derive next version number from the current version doc
-    const currentVersionDoc = automation.currentVersionId !== "placeholder"
-      ? await ctx.db.get(automation.currentVersionId)
-      : null;
+    const currentVersionDoc =
+      automation.currentVersionId !== "placeholder"
+        ? await ctx.db.get(automation.currentVersionId)
+        : null;
     const newVersion = (currentVersionDoc?.version ?? 0) + 1;
 
     const versionId = await ctx.db.insert("automationVersions", {
@@ -630,7 +641,8 @@ export const publish = mutation({
     const automation = await ctx.db.get(args.automationId);
     if (!automation) throw new Error("Automation not found");
     if (automation.orgId !== orgId) throw new Error("Forbidden");
-    if (automation.status !== "active") throw new Error("Can only publish active automations");
+    if (automation.status !== "active")
+      throw new Error("Can only publish active automations");
 
     // If already has a slug (was published before), reuse it
     let slug = automation.publishedSlug;
@@ -639,9 +651,14 @@ export const publish = mutation({
         const candidate = nanoid(10);
         const existing = await ctx.db
           .query("automations")
-          .withIndex("by_publishedSlug", (q) => q.eq("publishedSlug", candidate))
+          .withIndex("by_publishedSlug", (q) =>
+            q.eq("publishedSlug", candidate)
+          )
           .first();
-        if (!existing) { slug = candidate; break; }
+        if (!existing) {
+          slug = candidate;
+          break;
+        }
       }
       if (!slug) throw new Error("Failed to generate unique slug");
     }
@@ -649,9 +666,28 @@ export const publish = mutation({
     await ctx.db.patch(args.automationId, {
       publishedSlug: slug,
       publishAccess: args.access,
-      allowedEmails: args.access === "email" ? (args.allowedEmails ?? []) : undefined,
+      allowedEmails:
+        args.access === "email" ? (args.allowedEmails ?? []) : undefined,
       publishedAt: Date.now(),
     });
+
+    // Send invitation emails for email-gated access
+    if (args.access === "email" && args.allowedEmails?.length) {
+      const identity = await ctx.auth.getUserIdentity();
+      const inviterEmail = identity?.email ?? "Someone";
+      for (const email of args.allowedEmails) {
+        await ctx.scheduler.runAfter(
+          0,
+          internal.notifications.sendInvitationEmail,
+          {
+            toEmail: email,
+            automationName: automation.name,
+            slug: slug!,
+            inviterEmail,
+          }
+        );
+      }
+    }
 
     return { slug };
   },
@@ -690,12 +726,132 @@ export const updatePublishAccess = mutation({
     const automation = await ctx.db.get(args.automationId);
     if (!automation) throw new Error("Automation not found");
     if (automation.orgId !== orgId) throw new Error("Forbidden");
-    if (!automation.publishedAt) throw new Error("Automation is not currently published");
+    let slug = automation.publishedSlug;
 
-    await ctx.db.patch(args.automationId, {
-      publishAccess: args.access,
-      allowedEmails: args.access === "email" ? (args.allowedEmails ?? []) : undefined,
-    });
+    if (!automation.publishedAt) {
+      // Auto-publish if not yet published
+      if (!slug) {
+        for (let i = 0; i < 3; i++) {
+          const candidate = nanoid(10);
+          const existing = await ctx.db
+            .query("automations")
+            .withIndex("by_publishedSlug", (q) =>
+              q.eq("publishedSlug", candidate)
+            )
+            .first();
+          if (!existing) {
+            slug = candidate;
+            break;
+          }
+        }
+        if (!slug) throw new Error("Failed to generate unique slug");
+      }
+
+      await ctx.db.patch(args.automationId, {
+        publishedSlug: slug,
+        publishAccess: args.access,
+        allowedEmails:
+          args.access === "email" ? (args.allowedEmails ?? []) : undefined,
+        publishedAt: Date.now(),
+      });
+    } else {
+      await ctx.db.patch(args.automationId, {
+        publishAccess: args.access,
+        allowedEmails:
+          args.access === "email" ? (args.allowedEmails ?? []) : undefined,
+      });
+    }
+
+    return { slug: slug! };
+  },
+});
+
+// Add a single allowed email to a published (or auto-published) automation.
+export const addAllowedEmail = mutation({
+  args: {
+    automationId: v.id("automations"),
+    email: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { orgId } = await requireAuth(ctx);
+    const automation = await ctx.db.get(args.automationId);
+    if (!automation) throw new Error("Automation not found");
+    if (automation.orgId !== orgId) throw new Error("Forbidden");
+
+    let slug = automation.publishedSlug;
+
+    if (!automation.publishedAt) {
+      // Auto-publish with email access
+      if (!slug) {
+        for (let i = 0; i < 3; i++) {
+          const candidate = nanoid(10);
+          const existing = await ctx.db
+            .query("automations")
+            .withIndex("by_publishedSlug", (q) =>
+              q.eq("publishedSlug", candidate)
+            )
+            .first();
+          if (!existing) {
+            slug = candidate;
+            break;
+          }
+        }
+        if (!slug) throw new Error("Failed to generate unique slug");
+      }
+
+      await ctx.db.patch(args.automationId, {
+        publishedSlug: slug,
+        publishAccess: "email",
+        allowedEmails: [args.email],
+        publishedAt: Date.now(),
+      });
+    } else {
+      // Append with case-insensitive dedup
+      const existing = automation.allowedEmails ?? [];
+      const alreadyExists = existing.some(
+        (e) => e.toLowerCase() === args.email.toLowerCase()
+      );
+      if (!alreadyExists) {
+        await ctx.db.patch(args.automationId, {
+          allowedEmails: [...existing, args.email],
+        });
+      }
+    }
+
+    // Send invitation email
+    const identity = await ctx.auth.getUserIdentity();
+    const inviterEmail = identity?.email ?? "Someone";
+    await ctx.scheduler.runAfter(
+      0,
+      internal.notifications.sendInvitationEmail,
+      {
+        toEmail: args.email,
+        automationName: automation.name,
+        slug: slug!,
+        inviterEmail,
+      }
+    );
+
+    return { slug: slug! };
+  },
+});
+
+// Remove an allowed email from a published automation.
+export const removeAllowedEmail = mutation({
+  args: {
+    automationId: v.id("automations"),
+    email: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { orgId } = await requireAuth(ctx);
+    const automation = await ctx.db.get(args.automationId);
+    if (!automation) throw new Error("Automation not found");
+    if (automation.orgId !== orgId) throw new Error("Forbidden");
+
+    const updated = (automation.allowedEmails ?? []).filter(
+      (e) => e.toLowerCase() !== args.email.toLowerCase()
+    );
+    await ctx.db.patch(args.automationId, { allowedEmails: updated });
 
     return { success: true };
   },
@@ -712,29 +868,65 @@ export const getPublished = query({
 
     if (!automation) return null;
     if (!automation.publishedAt) return { unpublished: true as const };
-    if (automation.status !== "active") return { unavailable: true as const, name: automation.name };
+    if (automation.status !== "active")
+      return { unavailable: true as const, name: automation.name };
 
     // Load manifest from current version's artifact
-    const version = automation.currentVersionId !== "placeholder"
-      ? await ctx.db.get(automation.currentVersionId)
+    const version =
+      automation.currentVersionId !== "placeholder"
+        ? await ctx.db.get(automation.currentVersionId)
+        : null;
+    const artifact = version?.artifactId
+      ? await ctx.db.get(version.artifactId)
       : null;
-    const artifact = version?.artifactId ? await ctx.db.get(version.artifactId) : null;
     const manifest = artifact?.manifest ?? null;
 
     if (automation.publishAccess === "public") {
-      return { name: automation.name, description: automation.description, manifest, automationId: automation._id };
+      return {
+        name: automation.name,
+        description: automation.description,
+        manifest,
+        automationId: automation._id,
+      };
     }
 
     // Email-gated
     const auth = await optionalAuth(ctx);
-    if (!auth) return { requiresAuth: true as const, name: automation.name, description: automation.description };
+    if (!auth)
+      return {
+        requiresAuth: true as const,
+        name: automation.name,
+        description: automation.description,
+      };
 
-    const email = auth.email;
-    if (!email || !automation.allowedEmails?.some(e => e.toLowerCase() === email.toLowerCase())) {
+    let email = auth.email;
+    if (!email) {
+      const identity = await ctx.auth.getUserIdentity();
+      if (identity) {
+        const user = await ctx.db
+          .query("users")
+          .withIndex("by_clerkUserId", (q) =>
+            q.eq("clerkUserId", identity.tokenIdentifier)
+          )
+          .unique();
+        email = user?.email;
+      }
+    }
+    if (
+      !email ||
+      !automation.allowedEmails?.some(
+        (e) => e.toLowerCase() === email!.toLowerCase()
+      )
+    ) {
       return { accessDenied: true as const, name: automation.name };
     }
 
-    return { name: automation.name, description: automation.description, manifest, automationId: automation._id };
+    return {
+      name: automation.name,
+      description: automation.description,
+      manifest,
+      automationId: automation._id,
+    };
   },
 });
 
@@ -757,9 +949,10 @@ export const updateInternal = internalMutation({
     const manifest = artifact.manifest as ManifestArg;
 
     // Derive next version number from the current version doc
-    const currentVersionDoc = automation.currentVersionId !== "placeholder"
-      ? await ctx.db.get(automation.currentVersionId)
-      : null;
+    const currentVersionDoc =
+      automation.currentVersionId !== "placeholder"
+        ? await ctx.db.get(automation.currentVersionId)
+        : null;
     const newVersion = (currentVersionDoc?.version ?? 0) + 1;
 
     const versionId = await ctx.db.insert("automationVersions", {

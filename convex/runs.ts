@@ -279,8 +279,19 @@ export const triggerPublished = mutation({
     // Email-gated access check
     if (automation.publishAccess === "email") {
       const auth = await optionalAuth(ctx);
-      if (!auth?.email) throw new Error("Sign in required");
-      if (!automation.allowedEmails?.some(e => e.toLowerCase() === auth.email!.toLowerCase()))
+      let email = auth?.email;
+      if (auth && !email) {
+        const identity = await ctx.auth.getUserIdentity();
+        if (identity) {
+          const user = await ctx.db
+            .query("users")
+            .withIndex("by_clerkUserId", (q) => q.eq("clerkUserId", identity.tokenIdentifier))
+            .unique();
+          email = user?.email;
+        }
+      }
+      if (!email) throw new Error("Sign in required");
+      if (!automation.allowedEmails?.some(e => e.toLowerCase() === email!.toLowerCase()))
         throw new Error("Access denied");
     }
 
