@@ -118,7 +118,7 @@ export default function PublishedClient({ slug }: { slug: string }) {
           <p className="text-sm font-medium mb-4">
             Sign in to run this app
           </p>
-          <SignInButton mode="modal">
+          <SignInButton mode="modal" forceRedirectUrl={`/p/${slug}`} signUpForceRedirectUrl={`/p/${slug}`}>
             <Button className="w-full">Sign in</Button>
           </SignInButton>
         </div>
