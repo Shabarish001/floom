@@ -1,65 +1,399 @@
-# floom
+# Floom — Deploy Python apps instantly
 
-> Deploy Python scripts as cloud automations. No Docker, no infra. Get a web UI, REST API, and MCP endpoint in seconds.
+Deploy Python scripts as cloud automations. No Docker, no infra. Get a web UI, REST API, and webhook endpoint in seconds.
 
-floom is the production layer for AI agents. Write a Python script with a `run()` function, and floom gives you a shareable web UI with typed inputs/outputs, a REST API, managed secrets, version history, and scheduling. Deploy from Claude Code, Cursor, or any MCP-capable agent.
+## Quick start
 
-## Protocol
+1. Get an API key from https://dashboard.floom.dev/settings/api-key (keys start with `floom_`)
+2. Upload code: POST /api/artifacts/upload-url, PUT zip to the returned URL, POST /api/artifacts
+3. Deploy: POST /api/deploy with the artifactId
+4. Your app is live at the returned URL with a web UI, REST API, and optional webhook
 
-Scripts must have a `run()` function that takes typed parameters and returns a dict:
+## Authentication
+
+All API calls require a Bearer token in the Authorization header:
+
+```
+Authorization: Bearer floom_your_api_key_here
+```
+
+Base URL: https://dashboard.floom.dev
+
+## Python function format
+
+Your code must define a `run()` function at module level that takes typed parameters and returns a dict:
 
 ```python
 import os
 
-def run(input_text: str) -> dict:
-    # Your logic here
-    # Secrets via os.environ["SECRET_NAME"]
-    return {"result": "output"}
+def run(query: str, limit: int = 10) -> dict:
+    api_key = os.environ["MY_API_KEY"]  # secrets available as env vars
+    # your logic here
+    return {"result": "output", "count": 42}
 ```
 
-Manifest defines inputs, outputs, secrets, and dependencies:
+Multi-file projects are supported. The entrypoint file must have `run()` at module level. Other files can be imported normally. Every subdirectory with .py files must have an `__init__.py`.
+
+## Manifest format
 
 ```json
 {
-  "name": "Automation Name",
-  "description": "One sentence",
-  "inputs": [{"name": "input_text", "label": "Input", "type": "textarea", "required": true}],
-  "outputs": [{"name": "result", "label": "Result", "type": "text"}],
-  "secrets_needed": ["GEMINI_API_KEY"],
-  "python_dependencies": ["google-genai"],
+  "name": "My Automation",
+  "description": "What it does in one sentence",
+  "inputs": [
+    {
+      "name": "query",
+      "label": "Search Query",
+      "type": "text",
+      "required": true,
+      "description": "What to search for"
+    },
+    {
+      "name": "limit",
+      "label": "Max Results",
+      "type": "number",
+      "required": false,
+      "default": 10,
+      "min": 1,
+      "max": 100
+    }
+  ],
+  "outputs": [
+    { "name": "result", "label": "Result", "type": "text" },
+    { "name": "count", "label": "Count", "type": "number" }
+  ],
+  "secrets_needed": ["MY_API_KEY"],
+  "python_dependencies": ["requests", "pandas"],
   "manifest_version": "1.0"
 }
 ```
 
-Input types: text, textarea, url, file, number, enum, boolean, date.
-Output types: text, table, number, html, pdf, image.
+### Input types
 
-## API
+| Type       | Python type | Notes                                                     |
+|------------|-------------|-----------------------------------------------------------|
+| `text`     | `str`       | Short strings                                             |
+| `textarea` | `str`       | Long text (500+ chars)                                    |
+| `url`      | `str`       | Links                                                     |
+| `number`   | `int/float` | Supports `min`, `max`                                     |
+| `enum`     | `str`       | Fixed choices via `options` array                         |
+| `boolean`  | `bool`      | True/False                                                |
+| `date`     | `str`       | ISO 8601 format (e.g. "2024-01-15")                      |
+| `file`     | `str`       | Receives R2 URL string; download with `requests.get()`   |
 
-Base URL: https://dashboard.floom.dev/api/
-Auth: Bearer token via API key from dashboard.floom.dev/settings.
+### Output types
 
-- POST /api/artifacts - Upload code + manifest, returns artifactId
-- POST /api/test - Test artifact in sandbox, returns testRunId
-- POST /api/deploy - Deploy artifact as live automation
-- GET /api/automations - List automations
-- GET /api/automations/:id - Get automation detail + code
-- POST /api/automations/:id/update - Deploy new version
-- POST /api/automations/:id/run - Trigger a run
-- POST /api/automations/:id/rollback - Revert version
-- POST /api/secrets - Store org secret
+| Type     | Value format                        |
+|----------|-------------------------------------|
+| `text`   | string                              |
+| `number` | numeric                             |
+| `table`  | list of dicts (include `columns`)   |
+| `html`   | rendered HTML string                |
+| `pdf`    | PDF document                        |
+| `image`  | base64-encoded image                |
 
-## Installation (Claude Code skill)
+### Scheduling
 
-```bash
-git clone https://github.com/floomhq/floom.git ~/.claude/skills/floom-repo && ~/.claude/skills/floom-repo/scripts/setup
+Add `schedule` (cron) and `scheduleInputs` (default values) to the manifest:
+
+```json
+{
+  "schedule": "0 9 * * 1",
+  "scheduleInputs": { "query": "weekly report" }
+}
 ```
 
-Then use `/floom` in Claude Code to deploy any Python script.
+## Deploy flow (3-step artifact upload)
 
-## Links
+### Step 1: Get upload URL
 
+```
+POST /api/artifacts/upload-url
+Authorization: Bearer <api-key>
+
+Response:
+{
+  "uploadUrl": "https://r2.example.com/presigned-put-url...",
+  "r2Key": "artifacts/org123/uuid.zip"
+}
+```
+
+### Step 2: Upload zip
+
+```
+PUT <uploadUrl>
+Content-Type: application/zip
+Body: <binary zip data>
+```
+
+Package your Python files into a zip. Exclude `__pycache__/`, `.git/`, `*.pyc`. Do NOT include the manifest in the zip.
+
+### Step 3: Create artifact
+
+```
+POST /api/artifacts
+Authorization: Bearer <api-key>
+Content-Type: application/json
+
+{
+  "manifest": { ... },
+  "entrypoint": "main.py",
+  "r2Key": "artifacts/org123/uuid.zip"
+}
+
+Response:
+{ "artifactId": "art_abc123" }
+```
+
+- `entrypoint`: path to the file with `run()` inside the zip (e.g. `main.py` or `src/main.py`)
+- `r2Key`: the key from Step 1
+
+### Step 4: Deploy
+
+```
+POST /api/deploy
+Authorization: Bearer <api-key>
+Content-Type: application/json
+
+{
+  "artifactId": "art_abc123",
+  "changeNote": "Initial deploy"
+}
+
+Response:
+{
+  "id": "auto_xyz789",
+  "url": "https://dashboard.floom.dev/a/auto_xyz789"
+}
+```
+
+## Test before deploying
+
+Run your artifact in a sandbox before going live:
+
+```
+POST /api/test
+Authorization: Bearer <api-key>
+Content-Type: application/json
+
+{
+  "artifactId": "art_abc123",
+  "inputs": { "query": "test", "limit": 5 },
+  "wait": 10
+}
+
+Response:
+{
+  "testRunId": "tr_123",
+  "status": "success",
+  "result": {
+    "status": "success",
+    "outputs": { "result": "...", "count": 5 },
+    "logs": "..."
+  }
+}
+```
+
+- `wait` (0-10, default 10): seconds to wait for result before returning
+- `automationId` (optional): link to existing automation for secret access during update testing
+
+If `status` is `pending` or `running`, poll:
+
+```
+GET /api/test-runs/<testRunId>
+Authorization: Bearer <api-key>
+```
+
+Poll every 3s until status is `success`, `error`, or `timeout`.
+
+## Full API reference
+
+### Artifacts
+
+#### POST /api/artifacts/upload-url
+Get presigned PUT URL for zip upload.
+Response: `{ "uploadUrl": "...", "r2Key": "..." }`
+
+#### POST /api/artifacts
+Create artifact from uploaded zip.
+Body: `{ "manifest": {...}, "entrypoint": "main.py", "r2Key": "..." }`
+Response: `{ "artifactId": "..." }`
+Errors: 413 if zip exceeds 10 MB compressed or 50 MB uncompressed.
+
+#### GET /api/artifacts/:id/code
+Get download URL for artifact zip and file listing.
+Response: `{ "downloadUrl": "...", "fileList": [{ "path": "main.py", "size": 1234, "hash": "abc..." }] }`
+
+### Automations
+
+#### POST /api/deploy
+Deploy artifact as a new automation.
+Body: `{ "artifactId": "...", "changeNote": "..." }`
+Response: `{ "id": "...", "url": "..." }`
+
+#### GET /api/automations
+List automations. Optional query param `?q=search` for name/description search.
+Response: `{ "automations": [{ "id": "...", "name": "...", "status": "active", "currentVersion": 3, "url": "...", ... }] }`
+
+#### GET /api/automations/:id
+Full automation detail including manifest, file list, and entrypoint.
+Response: `{ "id": "...", "name": "...", "entrypoint": "main.py", "fileList": [...], "manifest": {...}, ... }`
+
+#### POST /api/automations/:id/update
+Deploy new version of an existing automation.
+Body: `{ "artifactId": "...", "changeNote": "Added error handling" }`
+
+#### POST /api/automations/:id/run
+Trigger a run with inputs.
+Body: `{ "inputs": { "query": "hello" }, "wait": 10 }`
+Response: `{ "runId": "...", "status": "success", "result": {...} }`
+If still running, poll with GET /api/runs/:runId.
+
+#### POST /api/automations/:id/rollback
+Revert to a previous version.
+Body: `{ "versionId": "ver_abc" }`
+
+### Runs
+
+#### GET /api/runs/:runId
+Poll run status until `status` is `success`, `error`, or `timeout`.
+Supports two auth modes: Bearer token, or `?token=<viewToken>` for webhook/published runs.
+
+### Testing
+
+#### POST /api/test
+Run artifact in sandbox. See "Test before deploying" above.
+
+#### GET /api/test-runs/:testRunId
+Poll test run status.
+
+### Secrets
+
+#### POST /api/secrets
+Store or update an org-scoped secret (available as env var in all automations).
+Body: `{ "name": "OPENAI_API_KEY", "value": "sk-..." }`
+
+## Webhooks
+
+Automations can be triggered via webhook (enabled in the dashboard). Webhook URLs follow the pattern:
+
+```
+POST https://dashboard.floom.dev/api/hooks/<automationId>/<webhookToken>
+Content-Type: application/json
+
+{ "query": "hello", "limit": 5 }
+```
+
+Query param `?wait=10` (0-10s) controls synchronous waiting. Default is 10s.
+
+Synchronous response (completed within wait window):
+```json
+{ "runId": "...", "status": "completed", "result": { "output_key": "value" } }
+```
+
+Async response (still running):
+```json
+{ "runId": "...", "status": "running", "pollUrl": "https://dashboard.floom.dev/api/runs/<runId>?token=<viewToken>", "retryAfter": 2 }
+```
+
+Schema endpoint:
+```
+GET /api/hooks/<automationId>/<webhookToken>/schema
+```
+Returns input/output schema for the automation.
+
+## Error types
+
+| errorType        | Meaning                              | Fix                                   |
+|------------------|--------------------------------------|---------------------------------------|
+| `syntax_error`   | Python syntax error in script        | Fix syntax and redeploy               |
+| `runtime_error`  | Uncaught exception during execution  | Check error message, fix script       |
+| `missing_secret` | os.environ["X"] failed               | Store the secret via POST /api/secrets |
+| `timeout`        | Script exceeded execution timeout    | Optimize code or reduce input size    |
+| `sandbox_error`  | Internal sandbox failure             | Retry or contact support              |
+
+## HTTP status codes
+
+| Code | Meaning                                          |
+|------|--------------------------------------------------|
+| 200  | Success                                          |
+| 400  | Invalid request (missing fields, validation)     |
+| 401  | Missing, invalid, or revoked API key             |
+| 403  | Resource belongs to a different organization      |
+| 404  | Resource not found                               |
+| 413  | Zip too large (>10 MB compressed)                |
+| 429  | Rate limit exceeded (50 runs/hour)               |
+
+## curl examples
+
+### Full deploy (single file)
+
+```bash
+# Write your script
+cat > /tmp/app.py << 'EOF'
+def run(name: str) -> dict:
+    return {"greeting": f"Hello, {name}!"}
+EOF
+
+# Zip it
+cd /tmp && zip app.zip app.py
+
+# Step 1: Get upload URL
+UPLOAD=$(curl -s -X POST https://dashboard.floom.dev/api/artifacts/upload-url \
+  -H "Authorization: Bearer $FLOOM_API_KEY")
+UPLOAD_URL=$(echo $UPLOAD | jq -r '.uploadUrl')
+R2_KEY=$(echo $UPLOAD | jq -r '.r2Key')
+
+# Step 2: Upload zip
+curl -s -X PUT "$UPLOAD_URL" -H "Content-Type: application/zip" --data-binary @app.zip
+
+# Step 3: Create artifact
+ARTIFACT=$(curl -s -X POST https://dashboard.floom.dev/api/artifacts \
+  -H "Authorization: Bearer $FLOOM_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"manifest\": {
+      \"name\": \"Greeter\",
+      \"description\": \"Says hello\",
+      \"inputs\": [{\"name\": \"name\", \"label\": \"Name\", \"type\": \"text\", \"required\": true}],
+      \"outputs\": [{\"name\": \"greeting\", \"label\": \"Greeting\", \"type\": \"text\"}],
+      \"secrets_needed\": [],
+      \"python_dependencies\": [],
+      \"manifest_version\": \"1.0\"
+    },
+    \"entrypoint\": \"app.py\",
+    \"r2Key\": \"$R2_KEY\"
+  }")
+ARTIFACT_ID=$(echo $ARTIFACT | jq -r '.artifactId')
+
+# Step 4: Deploy
+curl -s -X POST https://dashboard.floom.dev/api/deploy \
+  -H "Authorization: Bearer $FLOOM_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{\"artifactId\": \"$ARTIFACT_ID\"}"
+```
+
+### Trigger a run
+
+```bash
+curl -s -X POST https://dashboard.floom.dev/api/automations/<id>/run \
+  -H "Authorization: Bearer $FLOOM_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"inputs": {"name": "World"}, "wait": 10}'
+```
+
+### Store a secret
+
+```bash
+curl -s -X POST https://dashboard.floom.dev/api/secrets \
+  -H "Authorization: Bearer $FLOOM_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "OPENAI_API_KEY", "value": "sk-..."}'
+```
+
+## More
+
+- OpenAPI spec: https://dashboard.floom.dev/openapi.json
+- Docs: https://docs.floom.dev
 - GitHub: https://github.com/floomhq/floom
 - Dashboard: https://dashboard.floom.dev
-- Docs: https://docs.floom.dev
-- Protocol reference: https://github.com/floomhq/floom/blob/main/BUILDING.md
