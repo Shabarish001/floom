@@ -118,7 +118,7 @@ export default function PublishedClient({ slug }: { slug: string }) {
           <p className="text-sm font-medium mb-4">
             Sign in to run this app
           </p>
-          <SignInButton mode="modal">
+          <SignInButton mode="modal" forceRedirectUrl={`/p/${slug}`} signUpForceRedirectUrl={`/p/${slug}`}>
             <Button className="w-full">Sign in</Button>
           </SignInButton>
         </div>
@@ -155,7 +155,10 @@ export default function PublishedClient({ slug }: { slug: string }) {
     return getPublishedUpload({ slug, ...args });
   };
 
-  // Map publishedRun data to the Run type expected by OutputPanel
+  // Map publishedRun data to the Run type expected by OutputPanel.
+  // When activeRunId is set but publishedRun hasn't loaded yet, provide a
+  // pending placeholder so OutputPanel never falls back to the org-scoped
+  // api.runs.get query (which throws Forbidden for cross-org users).
   const runData = publishedRun
     ? {
         _id: activeRunId!,
@@ -174,7 +177,20 @@ export default function PublishedClient({ slug }: { slug: string }) {
         version: 0,
         versionId: "",
       }
-    : null;
+    : activeRunId && viewToken
+      ? {
+          _id: activeRunId,
+          status: "pending" as const,
+          outputs: null,
+          logs: "",
+          errorType: null,
+          error: null,
+          durationMs: null,
+          startedAt: Date.now(),
+          version: 0,
+          versionId: "",
+        }
+      : null;
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 sm:px-6 sm:py-12">

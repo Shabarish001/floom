@@ -133,8 +133,24 @@ export function OutputPanel({
   );
 }
 
+function parseErrorMessage(error: string | null): string | null {
+  if (!error) return null;
+  try {
+    const parsed = JSON.parse(error);
+    if (parsed && typeof parsed.error === "string") {
+      return parsed.hint
+        ? `${parsed.error}\nHint: ${parsed.hint}`
+        : parsed.error;
+    }
+  } catch {
+    // not JSON
+  }
+  return error;
+}
+
 function ErrorOutput({ run }: { run: Run }) {
   const [showLogs, setShowLogs] = useState(false);
+  const parsedError = parseErrorMessage(run.error);
 
   const errorMessages: Record<
     string,
@@ -148,17 +164,17 @@ function ErrorOutput({ run }: { run: Run }) {
     runtime_error: {
       icon: <XCircle className="size-4 text-destructive" />,
       title: "Runtime error",
-      detail: `Fix with: /floom fix [url]`,
+      detail: parsedError || "Fix with: /floom fix [url]",
     },
     sandbox_error: {
-      icon: <AlertCircle className="size-4 text-amber-500" />,
-      title: "Temporary service error",
-      detail: "Try again in a moment.",
+      icon: <XCircle className="size-4 text-destructive" />,
+      title: "Execution error",
+      detail: parsedError || "The app failed to run.",
     },
     syntax_error: {
       icon: <XCircle className="size-4 text-destructive" />,
       title: "Syntax error in app code",
-      detail: `Fix with: /floom fix [url]`,
+      detail: parsedError || "Fix with: /floom fix [url]",
     },
   };
 
@@ -166,25 +182,27 @@ function ErrorOutput({ run }: { run: Run }) {
     errorMessages[run.errorType ?? "runtime_error"] ??
     errorMessages.runtime_error;
 
+  const detailText = run.logs || run.error;
+
   return (
     <div className="p-4 space-y-3">
       <Alert variant="destructive">
         {errInfo.icon}
         <AlertTitle>{errInfo.title}</AlertTitle>
         <AlertDescription>
-          {errInfo.detail}
-          {run.errorType === "runtime_error" && run.error && (
+          <p className="whitespace-pre-wrap">{errInfo.detail}</p>
+          {detailText && detailText !== errInfo.detail && (
             <div className="mt-2">
               <button
                 onClick={() => setShowLogs(!showLogs)}
                 className="text-xs text-destructive/80 hover:text-destructive underline"
               >
-                {showLogs ? "\u25BC Hide traceback" : "\u25B6 Show traceback"}
+                {showLogs ? "\u25BC Hide details" : "\u25B6 Show details"}
               </button>
               {showLogs && (
                 <ScrollArea className="mt-2 max-h-48">
-                  <pre className="text-xs bg-destructive/5 p-2 rounded overflow-x-auto">
-                    {run.error}
+                  <pre className="text-xs bg-destructive/5 p-2 rounded overflow-x-auto whitespace-pre-wrap break-words">
+                    {detailText}
                   </pre>
                 </ScrollArea>
               )}

@@ -2,8 +2,8 @@
 
 import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useState, useEffect, useCallback, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import {
   Search,
@@ -16,8 +16,7 @@ import {
   Command as CommandIcon,
   LayoutGrid,
   List,
-  Settings,
-  Terminal,
+  Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getLabelColor, LABEL_COLORS } from "@/lib/label-colors";
@@ -41,8 +40,16 @@ import {
   CommandItem,
   CommandSeparator,
 } from "@/components/ui/command";
-import { TemplateCard } from "@/components/TemplateCard";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { AutomationListRow } from "@/components/AutomationListRow";
+import { OnboardingBanner } from "@/components/OnboardingBanner";
+import { TemplateCard } from "@/components/TemplateCard";
 
 const STORAGE_KEY_VIEW = "floom-gallery-view";
 
@@ -58,6 +65,7 @@ function GalleryContent() {
   const [query, setQuery] = useState("");
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [deployingSlug, setDeployingSlug] = useState<string | null>(null);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem(STORAGE_KEY_VIEW);
@@ -67,17 +75,7 @@ function GalleryContent() {
   });
   const [activeLabel, setActiveLabel] = useState<string | null>(null);
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { isAuthenticated } = useConvexAuth();
-
-  // Detect if user just came from /welcome to avoid showing redundant deploy instructions
-  const [cameFromWelcome, setCameFromWelcome] = useState(false);
-  useEffect(() => {
-    if (searchParams.get("from") === "welcome") {
-      setCameFromWelcome(true);
-      router.replace("/gallery");
-    }
-  }, [searchParams, router]);
 
   function handleViewChange(mode: "grid" | "list") {
     setViewMode(mode);
@@ -101,10 +99,6 @@ function GalleryContent() {
       setDeployingSlug(null);
     }
   };
-
-  // True empty state: user has 0 automations and is not searching.
-  const hasNoAutomations =
-    automations !== undefined && automations.length === 0 && !query;
 
   // Filter by search query
   const searchFiltered = automations?.filter((a: Automation) => {
@@ -189,6 +183,18 @@ function GalleryContent() {
               <CommandIcon size={11} />K
             </kbd>
           </Button>
+
+          {automations && automations.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0 ml-auto gap-1.5"
+              onClick={() => setTemplatesOpen(true)}
+            >
+              <Layers size={14} />
+              Templates
+            </Button>
+          )}
         </div>
 
         {/* Label filter bar */}
@@ -228,88 +234,21 @@ function GalleryContent() {
           </div>
         )}
 
+        {/* Onboarding banner — shown for new users with no API keys */}
+        {automations !== undefined && automations.length === 0 && (
+          <OnboardingBanner
+            templates={templates}
+            onDeploy={handleDeployTemplate}
+            deployingSlug={deployingSlug}
+          />
+        )}
+
         {/* Loading */}
         {automations === undefined && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-40 rounded-xl" />
             ))}
-          </div>
-        )}
-
-        {/* Deploy instructions — shown when user has 0 apps */}
-        {hasNoAutomations && (
-          <div className="mb-8 rounded-xl border border-border p-6">
-            <h2 className="text-sm font-medium text-foreground">
-              Deploy your first app
-            </h2>
-            <ol className="mt-3 space-y-2 text-sm text-muted-foreground">
-              <li className="flex items-start gap-2">
-                <span className="font-medium text-foreground shrink-0">1.</span>
-                <span>
-                  Get your API key from{" "}
-                  <Button
-                    variant="link"
-                    className="h-auto p-0 text-sm"
-                    onClick={() => router.push("/settings/api-key")}
-                  >
-                    Settings
-                    <Settings size={12} className="ml-1" />
-                  </Button>
-                </span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="font-medium text-foreground shrink-0">2.</span>
-                <span>Run:</span>
-              </li>
-            </ol>
-            <div className="mt-2 ml-5 flex items-center gap-2 rounded-lg bg-muted px-3 py-2 font-mono text-sm text-foreground">
-              <Terminal size={14} className="shrink-0 text-muted-foreground" />
-              npx floom deploy my-script.py
-            </div>
-            <p className="mt-3 ml-5 text-xs text-muted-foreground">
-              That&apos;s it. Your app will be live in seconds.
-            </p>
-          </div>
-        )}
-
-        {/* Starter templates — shown when user has 0 apps */}
-        {hasNoAutomations && templates === undefined && (
-          <div>
-            <div className="mb-4">
-              <Skeleton className="h-4 w-56 rounded" />
-              <Skeleton className="h-3 w-72 rounded mt-2" />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-48 rounded-xl" />
-              ))}
-            </div>
-          </div>
-        )}
-        {hasNoAutomations && templates && (
-          <div>
-            <div className="mb-4">
-              <h2 className="text-sm font-medium text-foreground">
-                Or start with a template
-              </h2>
-              <p className="text-xs text-muted-foreground mt-1">
-                Pick a starter app and customize it.
-              </p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {templates.map((t) => (
-                <TemplateCard
-                  key={t.slug}
-                  name={t.name}
-                  description={t.description}
-                  category={t.category}
-                  icon={t.icon}
-                  deploying={deployingSlug === t.slug}
-                  onDeploy={() => handleDeployTemplate(t.slug)}
-                />
-              ))}
-            </div>
           </div>
         )}
 
@@ -442,6 +381,31 @@ function GalleryContent() {
           </div>
         </Command>
       </CommandDialog>
+
+      {/* Templates dialog */}
+      <Dialog open={templatesOpen} onOpenChange={setTemplatesOpen}>
+        <DialogContent className="sm:max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Templates</DialogTitle>
+            <DialogDescription>
+              Pick a starter app and customize it.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
+            {templates?.map((t) => (
+              <TemplateCard
+                key={t.slug}
+                name={t.name}
+                description={t.description}
+                category={t.category}
+                icon={t.icon}
+                deploying={deployingSlug === t.slug}
+                onDeploy={() => handleDeployTemplate(t.slug)}
+              />
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

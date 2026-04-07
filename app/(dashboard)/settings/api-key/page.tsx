@@ -101,7 +101,8 @@ export default function ApiKeyPage() {
               <Alert>
                 <Key className="size-4" />
                 <AlertTitle>
-                  New API key created. Copy it now -- it will not be shown again.
+                  New API key created. Copy it now -- it will not be shown
+                  again.
                 </AlertTitle>
                 <AlertDescription>
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mt-2">
@@ -165,7 +166,10 @@ export default function ApiKeyPage() {
             )}
 
             {/* Create key form */}
-            <form onSubmit={handleCreate} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <form
+              onSubmit={handleCreate}
+              className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2"
+            >
               <Input
                 type="text"
                 placeholder="Key name (e.g. dev-laptop)"
@@ -182,42 +186,6 @@ export default function ApiKeyPage() {
                 {creating ? "Creating..." : "Create key"}
               </Button>
             </form>
-          </CardContent>
-        </Card>
-
-        <Separator />
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Install Skill</CardTitle>
-            <CardDescription>
-              Run this in your terminal to install floom in Claude Code:
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-              <div className="flex-1 flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2 min-w-0 overflow-x-auto">
-                <Terminal className="size-3.5 text-muted-foreground shrink-0" />
-                <code className="text-xs font-mono text-foreground whitespace-nowrap">
-                  {installCommand}
-                </code>
-              </div>
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Button variant="outline" onClick={copyInstall} />
-                  }
-                >
-                  {copiedInstall ? (
-                    <Check className="size-3.5 text-emerald-500" />
-                  ) : (
-                    <Copy className="size-3.5" />
-                  )}
-                  {copiedInstall ? "Copied!" : "Copy"}
-                </TooltipTrigger>
-                <TooltipContent>Copy install command</TooltipContent>
-              </Tooltip>
-            </div>
           </CardContent>
         </Card>
       </div>

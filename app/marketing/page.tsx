@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 /* ═══════════════════════════════════════════════════════════════
    floom Landing Page
@@ -145,6 +146,10 @@ export default function MarketingPage() {
               Dashboard
             </a>
 
+            <span className="hidden sm:block">
+              <ThemeToggle compact />
+            </span>
+
             <a
               href="https://dashboard.floom.dev/sign-up"
               className="hidden sm:inline-flex px-4 py-1.5 text-[12px] font-semibold text-white rounded-lg transition-all hover:opacity-90"
@@ -218,6 +223,9 @@ export default function MarketingPage() {
             >
               Dashboard
             </a>
+            <div className="py-1">
+              <ThemeToggle />
+            </div>
             <a
               href="https://dashboard.floom.dev/sign-up"
               onClick={() => setMenuOpen(false)}

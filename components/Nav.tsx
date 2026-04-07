@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Menu, X } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 export function Nav() {
   const pathname = usePathname();
@@ -73,6 +74,7 @@ export function Nav() {
               },
             }}
           />
+          <ThemeToggle compact />
           <div className="ml-1">
             <UserButton />
           </div>

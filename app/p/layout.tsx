@@ -1,6 +1,7 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import { ConvexClientProvider } from "../ConvexClientProvider";
 import { PostHogIdentify } from "../providers/PostHogIdentify";
+import { UserAvatar } from "./UserAvatar";
 
 export default function PublishedLayout({
   children,
@@ -20,6 +21,7 @@ export default function PublishedLayout({
             >
               Floom
             </a>
+            <UserAvatar />
           </header>
 
           {/* Content */}
