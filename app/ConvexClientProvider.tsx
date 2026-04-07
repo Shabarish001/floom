@@ -10,9 +10,10 @@ const convex = new ConvexReactClient(
   process.env.NEXT_PUBLIC_CONVEX_URL as string
 );
 
-// Syncs the Clerk-authenticated user into the Convex users table on first load.
-function UserSync() {
-  const { isAuthenticated } = useConvexAuth();
+// Blocks rendering children until Clerk has provided an auth token to Convex.
+// This prevents queries from firing before auth is ready (race condition).
+function AuthGate({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useConvexAuth();
   const { user, isLoaded } = useUser();
   const upsert = useMutation(api.users.upsert);
 
@@ -22,7 +23,9 @@ function UserSync() {
     upsert({ email }).catch(console.error);
   }, [isAuthenticated, user?.id, isLoaded, upsert]);
 
-  return null;
+  if (isLoading) return null;
+
+  return <>{children}</>;
 }
 
 export function ConvexClientProvider({
@@ -32,8 +35,7 @@ export function ConvexClientProvider({
 }) {
   return (
     <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-      <UserSync />
-      {children}
+      <AuthGate>{children}</AuthGate>
     </ConvexProviderWithClerk>
   );
 }

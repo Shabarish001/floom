@@ -27,10 +27,8 @@ export const upsert = mutation({
         });
 
     // Upsert organization
-    const clerkOrgId =
-      (identity as { org_id?: string }).org_id ?? tokenId;
-    const orgName =
-      (identity as { org_name?: string }).org_name ?? "Personal";
+    const clerkOrgId = (identity as { org_id?: string }).org_id ?? tokenId;
+    const orgName = (identity as { org_name?: string }).org_name ?? "Personal";
 
     let org = await ctx.db
       .query("organizations")
@@ -45,6 +43,9 @@ export const upsert = mutation({
         createdBy: tokenId,
       });
       org = await ctx.db.get(orgId);
+    } else if (org.name !== orgName) {
+      // Sync org name from Clerk JWT on every login
+      await ctx.db.patch(org._id, { name: orgName });
     }
 
     return { userId, orgId: org!._id };

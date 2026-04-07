@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { useOrganization } from "@clerk/nextjs";
 import { useState, useEffect } from "react";
 import { Globe, RefreshCw, Check } from "lucide-react";
 import {
@@ -39,6 +40,7 @@ function isValidUrl(input: string): boolean {
 export default function WorkspacePage() {
   const workspace = useQuery(api.organizations.getWorkspace);
   const updateWorkspace = useMutation(api.organizations.updateWorkspace);
+  const { organization: clerkOrg } = useOrganization();
 
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
@@ -68,10 +70,15 @@ export default function WorkspacePage() {
 
     setSaving(true);
     try {
+      const trimmedName = name.trim() || undefined;
       await updateWorkspace({
-        name: name.trim() || undefined,
+        name: trimmedName,
         websiteUrl: normalized || undefined,
       });
+      // Sync name to Clerk organization so the OrganizationSwitcher updates
+      if (trimmedName && clerkOrg) {
+        await clerkOrg.update({ name: trimmedName });
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
