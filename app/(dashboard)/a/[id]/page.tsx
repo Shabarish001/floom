@@ -12,7 +12,6 @@ import { OutputPanel } from "@/components/automation/OutputPanel";
 import { RunHistory } from "./RunHistory";
 
 import { VersionsTab } from "./VersionsTab";
-import { SecretsTab } from "./SecretsTab";
 import { WebhookTab } from "./WebhookTab";
 import { Share2, Pause, Play, MoreHorizontal, Trash2, Globe } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -300,9 +299,6 @@ export default function AutomationPage({
             <TabsTrigger value="runs">Runs</TabsTrigger>
             <TabsTrigger value="versions">Versions</TabsTrigger>
             <TabsTrigger value="webhook">Webhook</TabsTrigger>
-            {automation.isOwner && (
-              <TabsTrigger value="secrets">Secrets</TabsTrigger>
-            )}
           </TabsList>
         </div>
 
@@ -362,11 +358,6 @@ export default function AutomationPage({
           />
         </TabsContent>
 
-        {automation.isOwner && (
-          <TabsContent value="secrets" className="flex-1 overflow-y-auto">
-            <SecretsTab />
-          </TabsContent>
-        )}
       </Tabs>
 
       {/* Delete confirmation dialog */}
