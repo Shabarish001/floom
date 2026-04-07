@@ -4,6 +4,7 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { PostHogProvider } from "./providers/PostHogProvider";
 import { PostHogPageview } from "./providers/PostHogPageview";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -58,6 +59,9 @@ export const metadata: Metadata = {
   },
 };
 
+// Blocking script to prevent FOUC: reads theme from localStorage before paint
+const themeScript = `(function(){try{var t=localStorage.getItem('floom-theme')||'system';var r=t;if(t==='system'){r=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'}document.documentElement.dataset.theme=r;if(r==='dark'){document.documentElement.classList.add('dark')}else{document.documentElement.classList.remove('dark')}}catch(e){document.documentElement.dataset.theme='dark';document.documentElement.classList.add('dark')}})()`;
+
 export default function RootLayout({
   children,
 }: {
@@ -66,6 +70,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={cn("h-full", inter.variable, dmSerif.variable, jetbrainsMono.variable, "font-sans", geist.variable)}
       style={
         {
@@ -75,11 +80,16 @@ export default function RootLayout({
         } as React.CSSProperties
       }
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className={`${inter.className} min-h-full antialiased`}>
-        <PostHogProvider>
-          <PostHogPageview />
-          {children}
-        </PostHogProvider>
+        <ThemeProvider>
+          <PostHogProvider>
+            <PostHogPageview />
+            {children}
+          </PostHogProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
