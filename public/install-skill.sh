@@ -5,18 +5,21 @@ set -e
 
 DASHBOARD_URL="${1:-https://dashboard.floom.dev}"
 SKILL_DIR="$HOME/.claude/skills/floom"
-RAW_URL="https://raw.githubusercontent.com/floomhq/floom/main/skills/floom/SKILL.md"
+RAW_BASE="https://raw.githubusercontent.com/floomhq/floom/main/skills/floom"
+FILES="SKILL.md preflight.py check_protocol.py check_secrets.py upload.py"
 
 mkdir -p "$SKILL_DIR"
 
-if command -v curl >/dev/null 2>&1; then
-  curl -fsSL "$RAW_URL" -o "$SKILL_DIR/SKILL.md"
-elif command -v wget >/dev/null 2>&1; then
-  wget -qO "$SKILL_DIR/SKILL.md" "$RAW_URL"
-else
-  echo "Error: curl or wget required" >&2
-  exit 1
-fi
+for file in $FILES; do
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "$RAW_BASE/$file" -o "$SKILL_DIR/$file"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -qO "$SKILL_DIR/$file" "$RAW_BASE/$file"
+  else
+    echo "Error: curl or wget required" >&2
+    exit 1
+  fi
+done
 
 echo ""
 echo "floom skill installed to $SKILL_DIR/SKILL.md"

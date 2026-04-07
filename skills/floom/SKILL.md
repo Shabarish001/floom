@@ -10,41 +10,38 @@ description: |
 
 Deploy Python projects as cloud automations — no infra required. Supports single-file scripts and multi-file projects with imports.
 
-## Setup
+## Deploy Flow (`/floom`)
 
-Your API key is stored in `~/.claude/floom-config.json`.
-If it's not there yet, get it from **dashboard.floom.dev/settings**.
-
-```bash
-# Check config
-cat ~/.claude/floom-config.json 2>/dev/null || echo "NOT_CONFIGURED"
-```
-
-If NOT_CONFIGURED:
-
-```
-Paste your Floom API key from dashboard.floom.dev/settings:
-```
-
-Then write it:
+### Step 0: Preflight
 
 ```bash
-echo '{"api_key": "PASTE_KEY_HERE", "platform_url": "https://dashboard.floom.dev"}' > ~/.claude/floom-config.json
+python3 ~/.claude/skills/floom/preflight.py
 ```
+
+**If `ready: true`:** proceed to Step 1.
+
+**If `ready: false`:** follow the `fix` field — it tells you exactly what to do. After fixing, re-run preflight to confirm.
 
 ---
 
-## Deploy Flow (`/floom`)
+### Step 1: Resolve project path
 
-### Step 1: Get the project
+Determine the local directory path to the Python project.
 
-Get the user's Python code. Be flexible:
-
-- If the user points to a file, read it
-- If the user points to a directory, read all Python files in it
-- If the user gives a GitHub URL, clone it locally
-- If the user pastes code, use that (single-file mode)
+- If the user points to a file or directory → use that path
+- If the user gives a GitHub URL → clone it locally first
+- If the user pastes code → create a new tmp folder and write `main.py`
 - If unclear, ask: "Which Python script or project do you want to deploy?"
+
+### Step 1.5: Protocol check
+
+```bash
+python3 ~/.claude/skills/floom/check_protocol.py <PROJECT_PATH> [--entrypoint <file>]
+```
+
+**If `status: "ok"`:** the response includes `entrypoint`, `run_function`, `dependencies`, `secrets`, and optionally `existing_manifest`. If `existing_manifest` is present and appropriate, use it directly in Step 3; otherwise, use the returned info to create the manifest yourself in Step 3. If the user's earlier messages indicate a different intent (different entrypoint, specific inputs, subset of the project), respect that and proceed to Step 2 with their intent instead.
+
+**If `status: "error"`:** each error has a `fix` field — follow it.
 
 ### Step 2: Adapt to platform format
 
@@ -78,6 +75,8 @@ The platform requires an **entrypoint file** with a `run()` function that takes 
 - HTTP requests: `requests`, `httpx` (always available)
 - Read `requirements.txt` or `pyproject.toml` if they exist
 - Unknown deps: list them in `python_dependencies` — platform pip installs at run time
+
+After fixing issues, re-run the protocol checker to confirm compliance before proceeding.
 
 ### Step 3: Generate manifest
 
@@ -141,137 +140,44 @@ For schedule: convert natural language to cron directly. "Every Monday at 9am" -
 
 Only ask the user questions if something is genuinely ambiguous (e.g., can't tell what the inputs should be). Otherwise, infer everything from the code.
 
-### Step 4: Pre-flight validation
+### Step 4: Handle secrets
 
-Before uploading, validate locally to catch errors before hitting the server:
+Run the secrets checker with the `secrets_needed` array from the manifest:
 
 ```bash
-# Check syntax of all .py files
-find /tmp/floom-deploy -name "*.py" -exec python3 -c "
-import ast, sys
-try:
-    ast.parse(open(sys.argv[1]).read())
-except SyntaxError as e:
-    print(f'SYNTAX ERROR in {sys.argv[1]}: {e}')
-    sys.exit(1)
-" {} \;
-
-# Verify entrypoint has run()
-python3 -c "
-import ast, sys
-tree = ast.parse(open('/tmp/floom-deploy/ENTRYPOINT_FILE').read())
-has_run = any(isinstance(n, ast.FunctionDef) and n.name == 'run' for n in ast.iter_child_nodes(tree))
-if not has_run:
-    print('ERROR: Entrypoint does not have a module-level run() function')
-    sys.exit(1)
-print('Pre-flight: OK')
-"
+python3 ~/.claude/skills/floom/check_secrets.py '["ANTHROPIC_API_KEY", "STRIPE_KEY"]'
 ```
 
-If pre-flight fails, fix the issue and re-validate. Do NOT upload until pre-flight passes.
+Returns `found` (exact matches), `missing` (not on platform), and `platform_secrets` (all names on the platform).
 
-### Step 5: Handle secrets
-
-Read config:
+- If `missing` is empty — all secrets exist, skip to Step 6.
+- If `missing` has entries — check `platform_secrets` for obvious matches under a different name (e.g., code uses `GEMINI_KEY` but platform has `GEMINI_API_KEY`). If so, update the code to use the platform name. For truly missing secrets, ask the user for the value and store it:
 
 ```bash
 API_KEY=$(python3 -c "import json; print(json.load(open('$HOME/.claude/floom-config.json'))['api_key'])")
 PLATFORM=$(python3 -c "import json; print(json.load(open('$HOME/.claude/floom-config.json')).get('platform_url','https://dashboard.floom.dev'))")
-```
 
-For each secret in `secrets_needed`, ask one at a time:
-
-```
-This automation needs ANTHROPIC_API_KEY. Do you have one?
-If yes: paste it and I'll store it securely for all your workspace's automations.
-If no: I'll skip this — you can add it in Settings before running.
-```
-
-Store each secret:
-
-```bash
 curl -s -X POST "$PLATFORM/api/secrets" \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"name": "SECRET_NAME", "value": "SECRET_VALUE"}'
 ```
 
-### Step 6: Upload artifact (three-step zip upload)
+### Step 6: Upload artifact
 
-Package the project as a zip and upload via the three-step API.
+Prepare the project directory and manifest, then upload with the upload script.
+
+1. Write all project files to a new temp directory (e.g., `/tmp/floom-deploy/`). If you modified any code (adapting to protocol, renaming secrets), write the modified versions. Ensure `__init__.py` exists in all subdirectories.
+2. Write the manifest to a JSON file (e.g., `/tmp/floom-manifest.json`).
+3. Run the upload script:
 
 ```bash
-# Write project files to temp dir
-mkdir -p /tmp/floom-deploy
-# [Write all project files here — entrypoint + supporting files]
-
-cat > /tmp/floom-deploy/main.py << 'PYEOF'
-[ENTRYPOINT CODE]
-PYEOF
-
-# Write any additional files
-cat > /tmp/floom-deploy/utils/helpers.py << 'PYEOF'
-[HELPER CODE]
-PYEOF
-
-# Ensure __init__.py exists in all subdirectories
-find /tmp/floom-deploy -type d -exec sh -c '
-  for dir; do
-    [ "$dir" = "/tmp/floom-deploy" ] && continue
-    [ -f "$dir/__init__.py" ] || touch "$dir/__init__.py"
-  done
-' _ {} +
-
-# Write manifest
-cat > /tmp/floom-deploy/manifest.json << 'JSONEOF'
-[GENERATED MANIFEST]
-JSONEOF
-
-# Create zip (exclude __pycache__, .git, manifest.json)
-cd /tmp/floom-deploy
-zip -r /tmp/floom-deploy.zip . -x '__pycache__/*' '.git/*' 'manifest.json' '*.pyc'
-
-# Read config
-API_KEY=$(python3 -c "import json; print(json.load(open('$HOME/.claude/floom-config.json'))['api_key'])")
-PLATFORM=$(python3 -c "import json; print(json.load(open('$HOME/.claude/floom-config.json')).get('platform_url','https://dashboard.floom.dev'))")
-
-# Step 1: Get upload URL
-UPLOAD_RESULT=$(curl -s -X POST "$PLATFORM/api/artifacts/upload-url" \
-  -H "Authorization: Bearer $API_KEY" \
-  -H "Content-Type: application/json")
-
-UPLOAD_URL=$(python3 -c "import json,sys; print(json.load(sys.stdin)['uploadUrl'])" <<< "$UPLOAD_RESULT")
-R2_KEY=$(python3 -c "import json,sys; print(json.load(sys.stdin)['r2Key'])" <<< "$UPLOAD_RESULT")
-
-# Step 2: Upload zip
-curl -s -X PUT "$UPLOAD_URL" \
-  -H "Content-Type: application/zip" \
-  --data-binary @/tmp/floom-deploy.zip
-
-# Step 3: Create artifact (platform validates zip, computes file hashes)
-MANIFEST_JSON=$(cat /tmp/floom-deploy/manifest.json)
-
-python3 -c "
-import json
-manifest = json.load(open('/tmp/floom-deploy/manifest.json'))
-payload = json.dumps({
-    'manifest': manifest,
-    'entrypoint': 'ENTRYPOINT_FILENAME',
-    'r2Key': '$R2_KEY'
-})
-open('/tmp/floom-deploy/artifact-payload.json', 'w').write(payload)
-"
-
-ARTIFACT_RESULT=$(curl -s -X POST "$PLATFORM/api/artifacts" \
-  -H "Authorization: Bearer $API_KEY" \
-  -H "Content-Type: application/json" \
-  -d @/tmp/floom-deploy/artifact-payload.json)
-
-ARTIFACT_ID=$(python3 -c "import json,sys; print(json.load(sys.stdin)['artifactId'])" <<< "$ARTIFACT_RESULT")
-echo "Artifact uploaded: $ARTIFACT_ID"
+python3 ~/.claude/skills/floom/upload.py /tmp/floom-deploy --entrypoint main.py --manifest /tmp/floom-manifest.json
 ```
 
-Replace `ENTRYPOINT_FILENAME` with the actual entrypoint file path relative to project root (e.g., `main.py` or `src/main.py`).
+Returns `{"status": "ok", "artifactId": "..."}` or `{"status": "error", "error": "...", "fix": "..."}`.
+
+The script handles zipping and the 3-step presigned upload and artifact creation.
 
 ### Step 7: Ask user — test or deploy?
 
@@ -289,6 +195,7 @@ Wait for user's choice.
 If the user chose to test first:
 
 Determine test inputs:
+
 - If the manifest has `scheduleInputs`, use those as defaults
 - If inputs have `default` values, use those
 - Otherwise, ask the user for test input values
@@ -365,7 +272,7 @@ if doc.get('logs'): print(f\"Logs:\n{doc['logs']}\")
 
 **If test fails (autonomous fix loop):**
 
-Fix the code, re-run pre-flight validation, and re-upload as a NEW artifact (go back to Step 6). Loop autonomously up to 5 attempts. Do NOT ask the user between retries. After 5 failures, report the last error and ask:
+Fix the code and re-upload as a NEW artifact (go back to Step 6). Loop autonomously up to 5 attempts. Do NOT ask the user between retries. After 5 failures, report the last error and ask:
 
 ```
 Test failed after 5 attempts. Last error: [error message]
@@ -448,10 +355,9 @@ cd /tmp/floom-deploy && unzip -o /tmp/floom-current.zip
 2. Show existing file structure, ask what to change
 3. Apply changes to the project files
 4. Ask: "What changed? (optional note for version history)"
-5. Run pre-flight validation (Step 4)
-6. Upload the updated code as a new artifact (same as Deploy Flow Step 6)
-7. Ask user: test or deploy immediately? (same as Deploy Flow Step 7)
-8. If testing: same as Deploy Flow Step 8a, but include `automationId`:
+5. Upload the updated code as a new artifact (same as Deploy Flow Step 6)
+6. Ask user: test or deploy immediately? (same as Deploy Flow Step 7)
+7. If testing: same as Deploy Flow Step 8a, but include `automationId`:
 
 ```bash
 python3 -c "
@@ -462,7 +368,7 @@ open('/tmp/floom-deploy/test-payload.json', 'w').write(payload)
 "
 ```
 
-9. Deploy update:
+8. Deploy update:
 
 ```bash
 curl -s -X POST "$PLATFORM/api/automations/[AUTOMATION_ID]/update" \
@@ -490,18 +396,18 @@ curl -s -X POST "$PLATFORM/api/automations/[AUTOMATION_ID]/rollback" \
 
 ## Error Messages
 
-| Error                         | What to say                                                                    |
-| ----------------------------- | ------------------------------------------------------------------------------ |
-| 400 Validation failed         | "The code has an issue: [message]. Let me fix that."                           |
-| 400 Entrypoint not found      | "The entrypoint file wasn't found in the zip. Let me check the file paths."    |
-| 400 Missing run()             | "The entrypoint doesn't have a run() function. Let me add one."               |
-| 400 Path traversal            | "Invalid file path in the project. Let me fix the directory structure."        |
-| 413 Zip too large             | "The project is too large (>10MB compressed). Try removing unnecessary files." |
-| 404 Artifact not found        | "The uploaded code wasn't found. Let me re-upload and try again."              |
-| 403 Forbidden                 | "That artifact belongs to a different workspace."                              |
-| 401 Unauthorized              | "Your API key isn't working. Get a new one from dashboard.floom.dev/settings." |
-| Rate limit exceeded           | "You've hit the limit of 50 runs/hour. Try again in a bit."                    |
-| Missing secret                | "This automation needs [SECRET_NAME] but it's not stored. Want to add it now?" |
+| Error                    | What to say                                                                    |
+| ------------------------ | ------------------------------------------------------------------------------ |
+| 400 Validation failed    | "The code has an issue: [message]. Let me fix that."                           |
+| 400 Entrypoint not found | "The entrypoint file wasn't found in the zip. Let me check the file paths."    |
+| 400 Missing run()        | "The entrypoint doesn't have a run() function. Let me add one."                |
+| 400 Path traversal       | "Invalid file path in the project. Let me fix the directory structure."        |
+| 413 Zip too large        | "The project is too large (>10MB compressed). Try removing unnecessary files." |
+| 404 Artifact not found   | "The uploaded code wasn't found. Let me re-upload and try again."              |
+| 403 Forbidden            | "That artifact belongs to a different workspace."                              |
+| 401 Unauthorized         | "Your API key isn't working. Get a new one from dashboard.floom.dev/settings." |
+| Rate limit exceeded      | "You've hit the limit of 50 runs/hour. Try again in a bit."                    |
+| Missing secret           | "This automation needs [SECRET_NAME] but it's not stored. Want to add it now?" |
 
 ---
 
@@ -519,6 +425,7 @@ PLATFORM=$(python3 -c "import json; print(json.load(open('$HOME/.claude/floom-co
 Step 1 of artifact upload. Returns a presigned PUT URL for uploading a zip file to R2.
 
 **Response (200):**
+
 ```json
 {
   "uploadUrl": "https://r2.example.com/presigned-put-url...",
@@ -537,6 +444,7 @@ curl -s -X PUT "$UPLOAD_URL" -H "Content-Type: application/zip" --data-binary @p
 Step 3 of artifact upload. Validates the zip, computes file hashes, creates the artifact.
 
 **Body:**
+
 ```json
 {
   "manifest": { ... },
@@ -550,6 +458,7 @@ Step 3 of artifact upload. Validates the zip, computes file hashes, creates the 
 - `r2Key` (required) — R2 key from Step 1
 
 **Response (200):**
+
 ```json
 {
   "artifactId": "art123"
@@ -561,6 +470,7 @@ Step 3 of artifact upload. Validates the zip, computes file hashes, creates the 
 Download the artifact's code as a zip file. Returns a presigned download URL and file list.
 
 **Response (200):**
+
 ```json
 {
   "downloadUrl": "https://r2.example.com/presigned-get-url...",
@@ -576,9 +486,11 @@ Download the artifact's code as a zip file. Returns a presigned download URL and
 List all automations in the workspace.
 
 **Query params:**
+
 - `q` (optional) — case-insensitive search on name and description
 
 **Response (200):**
+
 ```json
 {
   "automations": [
@@ -604,6 +516,7 @@ List all automations in the workspace.
 Get full automation detail including file list, entrypoint, and manifest.
 
 **Response (200):**
+
 ```json
 {
   "id": "abc123",
@@ -628,6 +541,7 @@ Get full automation detail including file list, entrypoint, and manifest.
 Run an artifact's code in a sandbox before deploying. Returns a `testRunId`. The API waits up to 10s for results by default.
 
 **Body:**
+
 ```json
 {
   "artifactId": "art123",
@@ -642,6 +556,7 @@ Run an artifact's code in a sandbox before deploying. Returns a `testRunId`. The
 - `wait` (optional) — seconds to wait for result (default 10, max 10)
 
 **Response (200):**
+
 ```json
 {
   "testRunId": "xyz789",
@@ -665,6 +580,7 @@ Poll test run status until terminal (`success`, `error`, `timeout`).
 Deploy an artifact as a new automation. No test required.
 
 **Body:**
+
 ```json
 {
   "artifactId": "art123",
@@ -673,6 +589,7 @@ Deploy an artifact as a new automation. No test required.
 ```
 
 **Response (200):**
+
 ```json
 {
   "id": "abc123",
@@ -685,6 +602,7 @@ Deploy an artifact as a new automation. No test required.
 Deploy a new version of an existing automation from an artifact.
 
 **Body:**
+
 ```json
 {
   "artifactId": "art123",
@@ -697,6 +615,7 @@ Deploy a new version of an existing automation from an artifact.
 Trigger an automation run with given inputs.
 
 **Body:**
+
 ```json
 {
   "inputs": { "query": "hello" },
@@ -715,8 +634,21 @@ Poll run status until terminal (`success`, `error`, `timeout`).
 Revert to a previous version.
 
 **Body:**
+
 ```json
 { "versionId": "ver789" }
+```
+
+### GET /api/secrets
+
+List secret names stored in the workspace (values are never returned).
+
+**Response (200):**
+
+```json
+{
+  "secrets": ["ANTHROPIC_API_KEY", "OPENAI_API_KEY"]
+}
 ```
 
 ### POST /api/secrets
@@ -724,6 +656,7 @@ Revert to a previous version.
 Store or update an org secret.
 
 **Body:**
+
 ```json
 { "name": "ANTHROPIC_API_KEY", "value": "sk-ant-..." }
 ```

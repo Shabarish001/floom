@@ -25,11 +25,10 @@ import type * as lib_waitForResult from "../lib/waitForResult.js";
 import type * as notifications from "../notifications.js";
 import type * as organizations from "../organizations.js";
 import type * as runs from "../runs.js";
+import type * as scraper from "../scraper.js";
 import type * as secrets from "../secrets.js";
 import type * as templates from "../templates.js";
 import type * as testRuns from "../testRuns.js";
-import type * as organizations from "../organizations.js";
-import type * as scraper from "../scraper.js";
 import type * as users from "../users.js";
 
 import type {

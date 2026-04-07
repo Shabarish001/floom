@@ -105,6 +105,19 @@ export const list = query({
   },
 });
 
+// Internal: list secret names for an org (no decryption).
+export const listNamesByOrg = internalQuery({
+  args: { orgId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    const secrets = await ctx.db
+      .query("secrets")
+      .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+      .collect();
+
+    return secrets.map((s) => s.name).sort();
+  },
+});
+
 // Internal: store a secret by org (used by HTTP action).
 export const upsertInternal = internalMutation({
   args: {

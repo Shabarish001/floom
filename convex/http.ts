@@ -506,6 +506,25 @@ http.route({
   }),
 });
 
+// GET /api/secrets — list secret names (not values) for the org.
+http.route({
+  path: "/api/secrets",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const { orgId } = await verifyApiKey(request, ctx);
+      const names = await ctx.runQuery(internal.secrets.listNamesByOrg, { orgId });
+      return jsonResponse({ secrets: names });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      if (msg.includes("Unauthorized") || msg.includes("Invalid API key") || msg.includes("revoked")) {
+        return errorResponse(msg, 401);
+      }
+      return errorResponse(msg, 400);
+    }
+  }),
+});
+
 // POST /api/secrets — skill stores an org secret.
 http.route({
   path: "/api/secrets",
