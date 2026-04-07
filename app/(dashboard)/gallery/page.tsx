@@ -103,9 +103,8 @@ function GalleryContent() {
   };
 
   // True empty state: user has 0 automations and is not searching.
-  // Skip if user just came from /welcome (they already saw deploy instructions there).
-  const showTemplates =
-    automations !== undefined && automations.length === 0 && !query && !cameFromWelcome;
+  const hasNoAutomations =
+    automations !== undefined && automations.length === 0 && !query;
 
   // Filter by search query
   const searchFiltered = automations?.filter((a: Automation) => {
@@ -212,9 +211,7 @@ function GalleryContent() {
               return (
                 <button
                   key={label}
-                  onClick={() =>
-                    setActiveLabel(isActive ? null : label)
-                  }
+                  onClick={() => setActiveLabel(isActive ? null : label)}
                   className={cn(
                     "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-colors whitespace-nowrap",
                     isActive
@@ -241,7 +238,7 @@ function GalleryContent() {
         )}
 
         {/* Deploy instructions — shown when user has 0 apps */}
-        {showTemplates && (
+        {hasNoAutomations && (
           <div className="mb-8 rounded-xl border border-border p-6">
             <h2 className="text-sm font-medium text-foreground">
               Deploy your first app
@@ -277,7 +274,7 @@ function GalleryContent() {
         )}
 
         {/* Starter templates — shown when user has 0 apps */}
-        {showTemplates && templates === undefined && (
+        {hasNoAutomations && templates === undefined && (
           <div>
             <div className="mb-4">
               <Skeleton className="h-4 w-56 rounded" />
@@ -290,7 +287,7 @@ function GalleryContent() {
             </div>
           </div>
         )}
-        {showTemplates && templates && (
+        {hasNoAutomations && templates && (
           <div>
             <div className="mb-4">
               <h2 className="text-sm font-medium text-foreground">
@@ -317,55 +314,60 @@ function GalleryContent() {
         )}
 
         {/* Search/filter empty state — only when searching/filtering returns no results */}
-        {filtered !== undefined && filtered.length === 0 && (query || activeLabel) && (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Box size={40} className="text-gray-200 mb-4" />
-            <p className="text-muted-foreground text-sm">
-              No apps match{" "}
-              {query && <>&ldquo;{query}&rdquo;</>}
-              {query && activeLabel && " with label "}
-              {activeLabel && (
-                <span className="font-medium">{activeLabel}</span>
-              )}
-              .
-            </p>
-            <Button
-              variant="link"
-              onClick={() => {
-                setQuery("");
-                setActiveLabel(null);
-              }}
-              className="mt-2"
-            >
-              Clear filters
-            </Button>
-          </div>
-        )}
+        {filtered !== undefined &&
+          filtered.length === 0 &&
+          (query || activeLabel) && (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Box size={40} className="text-gray-200 mb-4" />
+              <p className="text-muted-foreground text-sm">
+                No apps match {query && <>&ldquo;{query}&rdquo;</>}
+                {query && activeLabel && " with label "}
+                {activeLabel && (
+                  <span className="font-medium">{activeLabel}</span>
+                )}
+                .
+              </p>
+              <Button
+                variant="link"
+                onClick={() => {
+                  setQuery("");
+                  setActiveLabel(null);
+                }}
+                className="mt-2"
+              >
+                Clear filters
+              </Button>
+            </div>
+          )}
 
         {/* Grid view */}
-        {filtered !== undefined && filtered.length > 0 && viewMode === "grid" && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map((automation: Automation) => (
-              <AutomationCard
-                key={automation._id}
-                automation={automation}
-                href={`/a/${automation._id}`}
-              />
-            ))}
-          </div>
-        )}
+        {filtered !== undefined &&
+          filtered.length > 0 &&
+          viewMode === "grid" && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filtered.map((automation: Automation) => (
+                <AutomationCard
+                  key={automation._id}
+                  automation={automation}
+                  href={`/a/${automation._id}`}
+                />
+              ))}
+            </div>
+          )}
 
         {/* List view */}
-        {filtered !== undefined && filtered.length > 0 && viewMode === "list" && (
-          <div className="flex flex-col divide-y divide-border rounded-xl border border-border overflow-hidden">
-            {filtered.map((automation: Automation) => (
-              <AutomationListRow
-                key={automation._id}
-                automation={automation}
-              />
-            ))}
-          </div>
-        )}
+        {filtered !== undefined &&
+          filtered.length > 0 &&
+          viewMode === "list" && (
+            <div className="flex flex-col divide-y divide-border rounded-xl border border-border overflow-hidden">
+              {filtered.map((automation: Automation) => (
+                <AutomationListRow
+                  key={automation._id}
+                  automation={automation}
+                />
+              ))}
+            </div>
+          )}
       </div>
 
       {/* Command Palette */}
