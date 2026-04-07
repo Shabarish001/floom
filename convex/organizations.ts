@@ -3,30 +3,9 @@ import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { requireAuth } from "./lib/auth";
 
-/**
- * Complete workspace onboarding: mark onboarding done.
- * URL/brand customization is handled separately in Settings > Workspace.
- */
-export const completeOnboarding = mutation({
-  args: {
-    name: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const { orgId } = await requireAuth(ctx);
-
-    const patch: Record<string, unknown> = {
-      onboardingComplete: true,
-    };
-    const name = args.name?.trim();
-    if (name && name.length <= 100) {
-      patch.name = name;
-    }
-
-    await ctx.db.patch(orgId, patch);
-
-    return { orgId };
-  },
-});
+// The onboardingComplete field remains in the schema for backward compatibility
+// but is no longer actively used; the welcome page handles new-user flow via
+// API key presence checks (hasKeys query).
 
 /** Return the current user's workspace record for the settings page. */
 export const getWorkspace = query({
@@ -105,28 +84,5 @@ export const updateWorkspace = mutation({
     }
 
     return { orgId };
-  },
-});
-
-// Check whether the current user's workspace has completed onboarding.
-export const needsOnboarding = query({
-  args: {},
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return false;
-
-    const clerkOrgId =
-      (identity as { org_id?: string }).org_id ?? identity.tokenIdentifier;
-
-    const org = await ctx.db
-      .query("organizations")
-      .withIndex("by_clerkOrgId", (q) => q.eq("clerkOrgId", clerkOrgId))
-      .unique();
-
-    // Org not yet created by UserSync — return null to signal "still loading"
-    // so the client doesn't prematurely skip the redirect.
-    if (!org) return null;
-
-    return !org.onboardingComplete;
   },
 });
