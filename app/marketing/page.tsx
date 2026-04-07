@@ -269,13 +269,13 @@ export default function MarketingPage() {
           >
             {/* Browser chrome bar */}
             <div
-              className="flex items-center gap-2 px-4 py-3"
+              className="flex items-center gap-2 px-4 py-3 min-w-0"
               style={{
                 background: "var(--floom-bg-tertiary)",
                 borderBottom: "1px solid var(--floom-border)",
               }}
             >
-              <span className="flex gap-1.5">
+              <span className="flex gap-1.5 flex-shrink-0">
                 <span
                   className="w-[10px] h-[10px] rounded-full"
                   style={{ background: "#FF5F57" }}
@@ -290,7 +290,7 @@ export default function MarketingPage() {
                 />
               </span>
               <span
-                className="ml-3 px-3 py-1 rounded-md text-[12px]"
+                className="ml-3 px-3 py-1 rounded-md text-[12px] truncate min-w-0"
                 style={{
                   background: "var(--floom-tab-pill-bg)",
                   color: "var(--floom-text-dim)",
@@ -303,10 +303,10 @@ export default function MarketingPage() {
 
             {/* Syntax-highlighted code display */}
             <div
-              className="w-full p-6 leading-[1.8] code-textarea select-none"
+              className="w-full p-4 sm:p-6 leading-[1.8] code-textarea select-none"
               style={{
                 fontFamily: "var(--font-mono), 'JetBrains Mono', monospace",
-                fontSize: "13px",
+                fontSize: "clamp(11px, 2.8vw, 13px)",
                 minHeight: "160px",
               }}
             >
@@ -502,7 +502,7 @@ export default function MarketingPage() {
           {/* 3-step flow */}
           <div
             data-reveal=""
-            className="grid grid-cols-3 gap-4 sm:gap-8 mb-16 max-w-[600px] mx-auto"
+            className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-8 mb-16 max-w-[600px] mx-auto"
           >
             {[
               {

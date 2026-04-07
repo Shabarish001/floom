@@ -2,8 +2,8 @@
 
 import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import {
   Search,
@@ -16,6 +16,8 @@ import {
   Command as CommandIcon,
   LayoutGrid,
   List,
+  Settings,
+  Terminal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getLabelColor, LABEL_COLORS } from "@/lib/label-colors";
@@ -45,6 +47,14 @@ import { AutomationListRow } from "@/components/AutomationListRow";
 const STORAGE_KEY_VIEW = "floom-gallery-view";
 
 export default function GalleryPage() {
+  return (
+    <Suspense>
+      <GalleryContent />
+    </Suspense>
+  );
+}
+
+function GalleryContent() {
   const [query, setQuery] = useState("");
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [deployingSlug, setDeployingSlug] = useState<string | null>(null);
@@ -57,7 +67,17 @@ export default function GalleryPage() {
   });
   const [activeLabel, setActiveLabel] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { isAuthenticated } = useConvexAuth();
+
+  // Detect if user just came from /welcome to avoid showing redundant deploy instructions
+  const [cameFromWelcome, setCameFromWelcome] = useState(false);
+  useEffect(() => {
+    if (searchParams.get("from") === "welcome") {
+      setCameFromWelcome(true);
+      router.replace("/gallery");
+    }
+  }, [searchParams, router]);
 
   function handleViewChange(mode: "grid" | "list") {
     setViewMode(mode);
@@ -82,9 +102,10 @@ export default function GalleryPage() {
     }
   };
 
-  // True empty state: user has 0 automations and is not searching
+  // True empty state: user has 0 automations and is not searching.
+  // Skip if user just came from /welcome (they already saw deploy instructions there).
   const showTemplates =
-    automations !== undefined && automations.length === 0 && !query;
+    automations !== undefined && automations.length === 0 && !query && !cameFromWelcome;
 
   // Filter by search query
   const searchFiltered = automations?.filter((a: Automation) => {
@@ -219,6 +240,42 @@ export default function GalleryPage() {
           </div>
         )}
 
+        {/* Deploy instructions — shown when user has 0 apps */}
+        {showTemplates && (
+          <div className="mb-8 rounded-xl border border-border p-6">
+            <h2 className="text-sm font-medium text-foreground">
+              Deploy your first app
+            </h2>
+            <ol className="mt-3 space-y-2 text-sm text-muted-foreground">
+              <li className="flex items-start gap-2">
+                <span className="font-medium text-foreground shrink-0">1.</span>
+                <span>
+                  Get your API key from{" "}
+                  <Button
+                    variant="link"
+                    className="h-auto p-0 text-sm"
+                    onClick={() => router.push("/settings/api-key")}
+                  >
+                    Settings
+                    <Settings size={12} className="ml-1" />
+                  </Button>
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="font-medium text-foreground shrink-0">2.</span>
+                <span>Run:</span>
+              </li>
+            </ol>
+            <div className="mt-2 ml-5 flex items-center gap-2 rounded-lg bg-muted px-3 py-2 font-mono text-sm text-foreground">
+              <Terminal size={14} className="shrink-0 text-muted-foreground" />
+              npx floom deploy my-script.py
+            </div>
+            <p className="mt-3 ml-5 text-xs text-muted-foreground">
+              That&apos;s it. Your app will be live in seconds.
+            </p>
+          </div>
+        )}
+
         {/* Starter templates — shown when user has 0 apps */}
         {showTemplates && templates === undefined && (
           <div>
@@ -237,11 +294,10 @@ export default function GalleryPage() {
           <div>
             <div className="mb-4">
               <h2 className="text-sm font-medium text-foreground">
-                Deploy a template to get started
+                Or start with a template
               </h2>
               <p className="text-xs text-muted-foreground mt-1">
-                Pick a starter app, or deploy your own with the Floom
-                CLI.
+                Pick a starter app and customize it.
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

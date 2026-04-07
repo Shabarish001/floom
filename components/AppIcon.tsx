@@ -4,14 +4,14 @@ import { Box } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const PASTEL_COLORS = [
-  { bg: "bg-blue-100", ring: "ring-blue-200" },
-  { bg: "bg-green-100", ring: "ring-green-200" },
-  { bg: "bg-purple-100", ring: "ring-purple-200" },
-  { bg: "bg-pink-100", ring: "ring-pink-200" },
-  { bg: "bg-amber-100", ring: "ring-amber-200" },
-  { bg: "bg-cyan-100", ring: "ring-cyan-200" },
-  { bg: "bg-rose-100", ring: "ring-rose-200" },
-  { bg: "bg-indigo-100", ring: "ring-indigo-200" },
+  { bg: "bg-blue-100", text: "text-blue-700" },
+  { bg: "bg-emerald-100", text: "text-emerald-700" },
+  { bg: "bg-purple-100", text: "text-purple-700" },
+  { bg: "bg-pink-100", text: "text-pink-700" },
+  { bg: "bg-amber-100", text: "text-amber-700" },
+  { bg: "bg-cyan-100", text: "text-cyan-700" },
+  { bg: "bg-rose-100", text: "text-rose-700" },
+  { bg: "bg-indigo-100", text: "text-indigo-700" },
 ];
 
 function hashCode(str: string): number {
@@ -31,14 +31,14 @@ type AppIconProps = {
 };
 
 const sizeMap = {
-  sm: { container: "size-8", img: 24, fallback: 14 },
-  md: { container: "size-10", img: 32, fallback: 18 },
-  lg: { container: "size-16", img: 52, fallback: 28 },
+  sm: { container: "size-8", textSize: "text-xs" },
+  md: { container: "size-10", textSize: "text-sm" },
+  lg: { container: "size-16", textSize: "text-xl" },
 };
 
 export function AppIcon({ name, iconSeed, size = "md", className }: AppIconProps) {
   if (!name) {
-    const { container, fallback } = sizeMap[size];
+    const { container } = sizeMap[size];
     return (
       <div
         className={cn(
@@ -47,7 +47,7 @@ export function AppIcon({ name, iconSeed, size = "md", className }: AppIconProps
           className
         )}
       >
-        <Box size={fallback} className="text-gray-400" />
+        <Box size={size === "lg" ? 28 : size === "sm" ? 14 : 18} className="text-gray-400" />
       </div>
     );
   }
@@ -55,27 +55,21 @@ export function AppIcon({ name, iconSeed, size = "md", className }: AppIconProps
   const seedStr = iconSeed ?? name;
   const hash = hashCode(seedStr);
   const color = PASTEL_COLORS[hash % PASTEL_COLORS.length];
-  const { container, img } = sizeMap[size];
-  const seed = encodeURIComponent(seedStr.toLowerCase().replace(/\s+/g, "-"));
-  const src = `https://api.dicebear.com/9.x/pixel-art/svg?seed=${seed}&backgroundColor=transparent`;
+  const { container, textSize } = sizeMap[size];
+  const initial = name.charAt(0).toUpperCase();
 
   return (
     <div
       className={cn(
-        "flex items-center justify-center rounded-xl",
+        "flex items-center justify-center rounded-xl font-semibold",
         color.bg,
+        color.text,
         container,
+        textSize,
         className
       )}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element -- DiceBear external SVG, not a static asset */}
-      <img
-        src={src}
-        alt={`${name} icon`}
-        width={img}
-        height={img}
-        className="pointer-events-none"
-      />
+      {initial}
     </div>
   );
 }

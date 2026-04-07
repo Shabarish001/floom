@@ -184,7 +184,7 @@ export default function WelcomePage() {
 
         {/* Continue button */}
         <Button
-          onClick={() => router.push("/gallery")}
+          onClick={() => router.push("/gallery?from=welcome")}
           className="w-full"
         >
           Continue to dashboard
