@@ -6,6 +6,7 @@ import { internal } from "./_generated/api";
 import { Sandbox } from "@e2b/code-interpreter";
 import { generateDownloadUrl, getR2Client } from "./files";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
+import { TEMPLATES } from "./templates";
 
 const EXECUTION_TIMEOUT_S = 5 * 60; // 5 minutes
 
@@ -88,6 +89,7 @@ async function executeInSandbox(params: {
   manifest: {
     python_dependencies?: string[];
     inputs?: Array<{ name: string; type: string }>;
+    template_code?: string;
   };
   inputs: Record<string, unknown>;
   secrets: Record<string, string>;
@@ -148,44 +150,61 @@ async function executeInSandbox(params: {
       }
     }
 
-    // --- Download zip from R2 ---
-    const zipDownloadStart = Date.now();
-    const r2 = getR2Client();
-    const codeBucket = process.env.R2_CODE_BUCKET_NAME;
-    if (!codeBucket) throw new Error("R2_CODE_BUCKET_NAME not configured");
-    const getCmd = new GetObjectCommand({
-      Bucket: codeBucket,
-      Key: r2Key,
-    });
-    const r2Response = await r2.send(getCmd);
-    if (!r2Response.Body) {
-      throw new Error(`R2 returned empty body for key: ${r2Key}`);
-    }
-    const zipBuffer = Buffer.from(await r2Response.Body.transformToByteArray());
-    timing.zipDownloadMs = Date.now() - zipDownloadStart;
+    // --- Load code into sandbox ---
+    const isTemplate = r2Key.startsWith("template:");
+    if (isTemplate) {
+      // Template artifacts store code inline in the manifest.
+      // Fallback: look up from TEMPLATES array for artifacts created before this fix.
+      const templateSlug = r2Key.slice("template:".length);
+      const templateCode = manifest.template_code
+        ?? TEMPLATES.find((t) => t.slug === templateSlug)?.code;
+      if (!templateCode) {
+        throw new Error(`Template artifact missing inline code (r2Key: ${r2Key})`);
+      }
+      timing.zipDownloadMs = 0;
+      const zipExtractionStart = Date.now();
+      await sandbox.files.write(`/home/user/${entrypoint}`, templateCode);
+      timing.zipExtractionMs = Date.now() - zipExtractionStart;
+    } else {
+      // Normal artifacts: download zip from R2
+      const zipDownloadStart = Date.now();
+      const r2 = getR2Client();
+      const codeBucket = process.env.R2_CODE_BUCKET_NAME;
+      if (!codeBucket) throw new Error("R2_CODE_BUCKET_NAME not configured");
+      const getCmd = new GetObjectCommand({
+        Bucket: codeBucket,
+        Key: r2Key,
+      });
+      const r2Response = await r2.send(getCmd);
+      if (!r2Response.Body) {
+        throw new Error(`R2 returned empty body for key: ${r2Key}`);
+      }
+      const zipBuffer = Buffer.from(await r2Response.Body.transformToByteArray());
+      timing.zipDownloadMs = Date.now() - zipDownloadStart;
 
-    // --- Upload zip + extract in sandbox ---
-    const zipExtractionStart = Date.now();
-    await sandbox.files.write(
-      "/tmp/code.zip",
-      zipBuffer.buffer.slice(
-        zipBuffer.byteOffset,
-        zipBuffer.byteOffset + zipBuffer.byteLength
-      ) as ArrayBuffer
-    );
-    const unzipOut = await sandbox.commands.run(
-      "unzip -o /tmp/code.zip -d /home/user",
-      { timeoutMs: 30_000 }
-    );
-    if (unzipOut.exitCode !== 0) {
-      throw new Error(`Unzip failed: ${unzipOut.stderr ?? "unknown error"}`);
+      // Upload zip + extract in sandbox
+      const zipExtractionStart = Date.now();
+      await sandbox.files.write(
+        "/tmp/code.zip",
+        zipBuffer.buffer.slice(
+          zipBuffer.byteOffset,
+          zipBuffer.byteOffset + zipBuffer.byteLength
+        ) as ArrayBuffer
+      );
+      const unzipOut = await sandbox.commands.run(
+        "unzip -o /tmp/code.zip -d /home/user",
+        { timeoutMs: 30_000 }
+      );
+      if (unzipOut.exitCode !== 0) {
+        throw new Error(`Unzip failed: ${unzipOut.stderr ?? "unknown error"}`);
+      }
+      // Verify entrypoint was extracted
+      const lsCheck = await sandbox.commands.run(`test -f /home/user/${entrypoint}`, { timeoutMs: 5_000 });
+      if (lsCheck.exitCode !== 0) {
+        throw new Error(`Entrypoint "${entrypoint}" not found after extraction`);
+      }
+      timing.zipExtractionMs = Date.now() - zipExtractionStart;
     }
-    // Verify entrypoint was extracted
-    const lsCheck = await sandbox.commands.run(`test -f /home/user/${entrypoint}`, { timeoutMs: 5_000 });
-    if (lsCheck.exitCode !== 0) {
-      throw new Error(`Entrypoint "${entrypoint}" not found after extraction`);
-    }
-    timing.zipExtractionMs = Date.now() - zipExtractionStart;
 
     // --- Write runner config ---
     const runnerConfig = JSON.stringify({ entrypoint, inputs: resolvedInputs });
@@ -343,6 +362,7 @@ export const executeRun = internalAction({
       manifest: artifact.manifest as {
         python_dependencies?: string[];
         inputs?: Array<{ name: string; type: string }>;
+        template_code?: string;
       },
       inputs: run.inputs as Record<string, unknown>,
       secrets,
@@ -397,6 +417,7 @@ export const executeTestRun = internalAction({
       manifest: artifact.manifest as {
         python_dependencies?: string[];
         inputs?: Array<{ name: string; type: string }>;
+        template_code?: string;
       },
       inputs: testRun.inputs as Record<string, unknown>,
       secrets,

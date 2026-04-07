@@ -610,9 +610,9 @@ export const deploy = mutation({
       throw new Error(`Template not found: ${args.slug}`);
     }
 
-    // Create artifact with template code stored inline.
-    // Templates use a special r2Key prefix; the executor reads template code
-    // from the manifest when r2Key starts with "template:".
+    // Create artifact with template code stored inline in the manifest.
+    // The executor detects r2Key starting with "template:" and reads
+    // manifest.template_code instead of downloading from R2.
     const codeBytes = new TextEncoder().encode(template.code);
     const hashArray = Array.from(
       new Uint8Array(await crypto.subtle.digest("SHA-256", codeBytes))
@@ -620,7 +620,7 @@ export const deploy = mutation({
     const codeHash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
     const artifactId = await ctx.db.insert("artifacts", {
       orgId,
-      manifest: template.manifest,
+      manifest: { ...template.manifest, template_code: template.code },
       entrypoint: "main.py",
       r2Key: `template:${template.slug}`,
       fileList: [{ path: "main.py", size: codeBytes.length, hash: codeHash }],
