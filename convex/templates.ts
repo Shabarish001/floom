@@ -10,6 +10,7 @@ export type TemplateDefinition = {
   name: string;
   description: string;
   category: string;
+  labels: string[];
   icon: string; // lucide icon name
   manifest: {
     name: string;
@@ -43,6 +44,7 @@ export const TEMPLATES: TemplateDefinition[] = [
     name: "Web Scraper",
     description: "Extract structured data from any URL — titles, headings, links, and metadata.",
     category: "Data",
+    labels: ["scraping"],
     icon: "Globe",
     manifest: {
       name: "Web Scraper",
@@ -115,6 +117,7 @@ def run(url):
     name: "PDF Report Generator",
     description: "Generate a formatted PDF report from a title, body text, and optional sections.",
     category: "Documents",
+    labels: ["reporting", "pdf"],
     icon: "FileText",
     manifest: {
       name: "PDF Report Generator",
@@ -196,6 +199,7 @@ def run(title, body, author=""):
     name: "Data Analyzer",
     description: "Analyze CSV data and return summary statistics, column info, and top insights.",
     category: "Data",
+    labels: ["data"],
     icon: "BarChart3",
     manifest: {
       name: "Data Analyzer",
@@ -274,6 +278,7 @@ def run(csv_data):
     name: "Text Summarizer",
     description: "Summarize long text into key points using extractive summarization (no API keys needed).",
     category: "Text",
+    labels: ["ai"],
     icon: "AlignLeft",
     manifest: {
       name: "Text Summarizer",
@@ -370,6 +375,7 @@ def run(text, num_sentences=5):
     name: "JSON Transformer",
     description: "Convert data between formats: CSV to JSON, JSON to CSV, flatten nested JSON, or filter JSON fields.",
     category: "Data",
+    labels: ["data"],
     icon: "Braces",
     manifest: {
       name: "JSON Transformer",
@@ -484,6 +490,7 @@ def pick_fields(json_data, fields_str):
     name: "Email Template Generator",
     description: "Generate responsive HTML email templates from parameters like subject, body, and brand color.",
     category: "Documents",
+    labels: ["email"],
     icon: "Mail",
     manifest: {
       name: "Email Template Generator",
@@ -634,6 +641,7 @@ export const deploy = mutation({
       schedule: null,
       scheduleInputs: null,
       currentVersionId: "placeholder" as const,
+      labels: template.labels,
     });
 
     // Create version 1
