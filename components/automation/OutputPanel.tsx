@@ -151,9 +151,9 @@ function ErrorOutput({ run }: { run: Run }) {
       detail: `Fix with: /floom fix [url]`,
     },
     sandbox_error: {
-      icon: <AlertCircle className="size-4 text-amber-500" />,
-      title: "Temporary service error",
-      detail: "Try again in a moment.",
+      icon: <XCircle className="size-4 text-destructive" />,
+      title: "Execution error",
+      detail: run.error || "The app failed to run.",
     },
     syntax_error: {
       icon: <XCircle className="size-4 text-destructive" />,
@@ -173,7 +173,7 @@ function ErrorOutput({ run }: { run: Run }) {
         <AlertTitle>{errInfo.title}</AlertTitle>
         <AlertDescription>
           {errInfo.detail}
-          {run.errorType === "runtime_error" && run.error && (
+          {(run.errorType === "runtime_error" || run.errorType === "sandbox_error") && run.error && (
             <div className="mt-2">
               <button
                 onClick={() => setShowLogs(!showLogs)}

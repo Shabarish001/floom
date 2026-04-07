@@ -181,7 +181,10 @@ async function executeInSandbox(params: {
       throw new Error(`Unzip failed: ${unzipOut.stderr ?? "unknown error"}`);
     }
     // Verify entrypoint was extracted
-    const lsCheck = await sandbox.commands.run(`test -f /home/user/${entrypoint}`, { timeoutMs: 5_000 });
+    const lsCheck = await sandbox.commands.run(
+      `test -f /home/user/${entrypoint}`,
+      { timeoutMs: 5_000 }
+    );
     if (lsCheck.exitCode !== 0) {
       throw new Error(`Entrypoint "${entrypoint}" not found after extraction`);
     }
@@ -271,7 +274,20 @@ async function executeInSandbox(params: {
       timing,
     };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    // E2B throws CommandExitError for non-zero exit codes, which carries
+    // stdout/stderr from the failed process. Extract those for better errors.
+    const errObj = err as Record<string, unknown>;
+    const stderr = typeof errObj?.stderr === "string" ? errObj.stderr : "";
+    const stdout = typeof errObj?.stdout === "string" ? errObj.stdout : "";
+
+    if (stderr || stdout) {
+      const combined = [stdout, stderr].filter(Boolean).join("\n");
+      if (combined) logs = logs ? `${logs}\n${combined}` : combined;
+    }
+
+    const msg =
+      stderr || stdout || (err instanceof Error ? err.message : String(err));
+
     const isTimeout =
       msg.toLowerCase().includes("timeout") ||
       msg.toLowerCase().includes("timed out");
