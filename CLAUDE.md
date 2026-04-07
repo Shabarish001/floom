@@ -6,6 +6,24 @@ When working on Convex code, **always read `convex/_generated/ai/guidelines.md` 
 Convex agent skills for common tasks can be installed by running `npx convex ai-files install`.
 <!-- convex-ai-end -->
 
+## PR workflow (MANDATORY before merging)
+
+1. `npx tsc --noEmit` — typecheck
+2. `npx next build` — catches prerendering + server/client boundary errors that tsc misses. NEVER skip this.
+3. Visual screenshot of UI changes
+4. Self-audit: naming ("apps" not "automations", "workspace" not "organization"), server/client boundaries (`buttonVariants` and hooks only in `"use client"` files), dark mode (`var(--floom-*)` not hardcoded colors)
+5. Gemini bouncer score before merge
+6. Verify on production after deploy
+
+**Naming conventions:**
+- UI text: "apps" (not "automations"), "workspace" (not "organization")
+- Convex tables: still `automations`, `automationVersions` (no DB migration yet)
+- Nav: chevron logo icon only, no "floom" text
+
+**Dark mode:** Both `[data-theme="dark"]` and `.dark` selectors must have `--floom-*` overrides. Never use hardcoded colors in marketing page — always `var(--floom-*)`.
+
+**Env vars:** E2B, Gemini, Resend, R2, SECRETS_ENCRYPTION_KEY are Convex env vars (`npx convex env set`), NOT `.env.local`.
+
 ## Skill routing
 
 When the user's request matches an available skill, ALWAYS invoke it using the Skill
