@@ -54,14 +54,100 @@ pre {
 
 /* ═══════════════════════════════════════════════════════════════
    MARKETING / LANDING PAGE STYLES
-   (Preserved from floomhq/floom-deprecated — light mode only)
+   (Preserved from floomhq/floom-deprecated, light + dark themes)
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── Light theme variables ─────────────────────────────────── */
+/* ── Theme variables ──────────────────────────────────────── */
+/* :root provides light defaults so the page renders before JS sets data-theme */
 :root {
   --radius: 0.625rem;
+  --grain-opacity: 0.12;
+  --grain-blend: multiply;
+  --floom-tab-pill-bg: rgba(0, 0, 0, 0.05);
+  --floom-bg: #fafaf7;
+  --floom-card-bg: #ffffff;
+  --floom-bg-tertiary: #f5f4f0;
+  --floom-input-hover: #eceae4;
+  --floom-bg-active: #dddbd4;
+  --floom-border: #eceae4;
+  --floom-border-subtle: #f5f4f0;
+  --floom-border-hover: #c4c1b8;
+  --floom-text: #161512;
+  --floom-text-secondary: #5a5850;
+  --floom-text-muted: #64615a;
+  --floom-text-dim: #5f5c53;
+  --floom-text-dimmer: #6a6760;
+  --floom-accent: #059669;
+  --floom-accent-hover: #047857;
+  --floom-accent-bg: #ecfdf5;
+  --floom-accent-border: #d1fae5;
+  --floom-success: #059669;
+  --floom-success-subtle: rgba(5, 150, 105, 0.08);
+  --floom-warning: #f59e0b;
+  --floom-warning-subtle: rgba(245, 158, 11, 0.08);
+  --floom-error: #c53030;
+  --floom-error-subtle: rgba(197, 48, 48, 0.08);
+  --floom-info: #3b82f6;
+  --floom-info-subtle: rgba(59, 130, 246, 0.08);
+  --floom-card-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 20px rgba(0, 0, 0, 0.08),
+    0 8px 32px rgba(0, 0, 0, 0.03);
+  --floom-card-shadow-sm:
+    0 1px 3px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --floom-nav-bg: rgba(250, 250, 247, 0.9);
+  --floom-pill-bg: #f5f4f0;
+  --floom-input-bg: #ffffff;
+  --floom-github-fill: #5a5850;
+  --floom-problem-bg: #fef2f2;
+  --floom-outline-border: #dddbd4;
+  --floom-check-muted: #c4c1b8;
+  --floom-blob-opacity: 1;
+  --floom-section-alt: #edebe1;
+  --floom-section-muted: #fafaf7;
+  --floom-quote-card-bg: #ffffff;
+  --floom-quote-highlight: #047857;
+  --floom-code-comment: #6b7280;
+  --floom-code-keyword: #4f46e5;
+  --floom-code-decorator: #059669;
+  --floom-code-fn: #0369a1;
+  --floom-code-string: #b45309;
+  --floom-card-border: #eceae4;
+  --floom-input-border: #767370;
+  --floom-accent-fg: #052e16;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
 }
 
+/* Explicit light: same as :root defaults */
 [data-theme="light"] {
   --grain-opacity: 0.12;
   --grain-blend: multiply;
@@ -202,6 +288,38 @@ pre {
   --floom-code-decorator: #6C7BF7;
   --floom-code-fn: #38BDF8;
   --floom-code-string: #FCD34D;
+  /* shadcn dark variables */
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
 }
 
 /* Scrollbar styling */
@@ -938,6 +1056,7 @@ select {
 }
 
 .dark {
+  /* shadcn dark variables */
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -969,6 +1088,57 @@ select {
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  /* floom dark variables (mirrors [data-theme="dark"]) */
+  --grain-opacity: 0.4;
+  --grain-blend: overlay;
+  --floom-bg: #0B0A09;
+  --floom-card-bg: #181614;
+  --floom-bg-tertiary: #2B2925;
+  --floom-input-hover: #3D3B35;
+  --floom-bg-active: #3D3B35;
+  --floom-border: rgba(255, 255, 255, 0.10);
+  --floom-border-subtle: rgba(255, 255, 255, 0.05);
+  --floom-border-hover: rgba(255, 255, 255, 0.24);
+  --floom-text: #F5F4F0;
+  --floom-text-secondary: #B8B5AC;
+  --floom-text-muted: #9A9790;
+  --floom-text-dim: #5A5850;
+  --floom-text-dimmer: #3D3B35;
+  --floom-accent: #6C7BF7;
+  --floom-accent-hover: #818CF8;
+  --floom-accent-bg: rgba(108, 123, 247, 0.12);
+  --floom-accent-border: rgba(108, 123, 247, 0.25);
+  --floom-success: #34D399;
+  --floom-success-subtle: rgba(52, 211, 153, 0.1);
+  --floom-warning: #FBBF24;
+  --floom-warning-subtle: rgba(245, 158, 11, 0.1);
+  --floom-error: #F87171;
+  --floom-error-subtle: rgba(239, 68, 68, 0.1);
+  --floom-info: #3B82F6;
+  --floom-info-subtle: rgba(59, 130, 246, 0.1);
+  --floom-card-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --floom-card-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --floom-nav-bg: rgba(11, 10, 9, 0.9);
+  --floom-pill-bg: #2B2925;
+  --floom-input-bg: #181614;
+  --floom-github-fill: #A09D94;
+  --floom-problem-bg: rgba(239, 68, 68, 0.1);
+  --floom-outline-border: rgba(255, 255, 255, 0.08);
+  --floom-check-muted: #5A5850;
+  --floom-tab-pill-bg: rgba(255, 255, 255, 0.07);
+  --floom-blob-opacity: 0.4;
+  --floom-section-alt: #181614;
+  --floom-section-muted: #0B0A09;
+  --floom-card-border: rgba(255, 255, 255, 0.08);
+  --floom-input-border: rgba(255, 255, 255, 0.35);
+  --floom-accent-fg: #FFFFFF;
+  --floom-quote-card-bg: #1a1a1a;
+  --floom-quote-highlight: #818CF8;
+  --floom-code-comment: #6B7280;
+  --floom-code-keyword: #818CF8;
+  --floom-code-decorator: #6C7BF7;
+  --floom-code-fn: #38BDF8;
+  --floom-code-string: #FCD34D;
 }
 
 @layer base {
