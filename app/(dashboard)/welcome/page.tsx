@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useConvexAuth } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
 import { useState, useEffect, useRef } from "react";
@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 
 export default function WelcomePage() {
   const { user } = useUser();
+  const { isAuthenticated } = useConvexAuth();
   const router = useRouter();
   const [orgId, setOrgId] = useState<Id<"organizations"> | null>(null);
   const [rawKey, setRawKey] = useState<string | null>(null);
@@ -41,13 +42,13 @@ export default function WelcomePage() {
 
   // Resolve orgId on mount
   useEffect(() => {
-    if (!user) return;
+    if (!isAuthenticated || !user) return;
     upsertUser({ email: user.primaryEmailAddress?.emailAddress ?? "" })
       .then((result) => {
         if (result?.orgId) setOrgId(result.orgId);
       })
       .catch(() => {});
-  }, [upsertUser, user]);
+  }, [isAuthenticated, upsertUser, user]);
 
   // If returning user already has keys, redirect to gallery
   useEffect(() => {

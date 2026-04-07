@@ -1,7 +1,7 @@
 "use client";
 
 import { ConvexProviderWithClerk } from "convex/react-clerk";
-import { ConvexReactClient, useMutation } from "convex/react";
+import { ConvexReactClient, useMutation, useConvexAuth } from "convex/react";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { useEffect } from "react";
 import { api } from "@/convex/_generated/api";
@@ -12,14 +12,15 @@ const convex = new ConvexReactClient(
 
 // Syncs the Clerk-authenticated user into the Convex users table on first load.
 function UserSync() {
+  const { isAuthenticated } = useConvexAuth();
   const { user, isLoaded } = useUser();
   const upsert = useMutation(api.users.upsert);
 
   useEffect(() => {
-    if (!isLoaded || !user) return;
+    if (!isAuthenticated || !isLoaded || !user) return;
     const email = user.primaryEmailAddress?.emailAddress ?? "";
     upsert({ email }).catch(console.error);
-  }, [user?.id, isLoaded, upsert]);
+  }, [isAuthenticated, user?.id, isLoaded, upsert]);
 
   return null;
 }
