@@ -38,6 +38,65 @@ git clone https://github.com/floomhq/floom.git ~/.claude/skills/floom-repo && ~/
 
 Or tell any MCP-capable agent: **"deploy this on floom"**
 
+## Local Development (Dashboard)
+
+This repository also includes the Floom dashboard built with Next.js, Convex, and Clerk.
+
+You can run the dashboard locally for development, but some platform features require external services and additional credentials.
+
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Start Convex development
+
+```bash
+npx convex dev
+```
+
+This connects the app to a Convex development deployment and keeps generated files in sync.
+
+### 3. Configure environment variables
+
+Create a `.env.local` file and add:
+
+```bash
+NEXT_PUBLIC_CONVEX_URL=
+NEXT_PUBLIC_CONVEX_SITE_URL=
+CONVEX_DEPLOYMENT=
+
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
+CLERK_JWT_ISSUER_DOMAIN=https://<your-clerk-domain>.clerk.accounts.dev
+```
+
+### 4. Configure Convex auth environment
+
+This repo's Convex auth requires `CLERK_JWT_ISSUER_DOMAIN`.
+
+Set it in Convex as well:
+
+```bash
+npx convex env set CLERK_JWT_ISSUER_DOMAIN https://<your-clerk-domain>.clerk.accounts.dev
+```
+
+### 5. Run the app
+
+```bash
+npm run dev
+```
+
+Open `http://localhost:3000`.
+
+### Notes
+
+- Some features depend on external services such as R2, E2B, email, and scraping, and may not work locally without additional credentials.
+- Workspace setup depends on successful Clerk to Convex authentication.
+- If the app gets stuck during setup, verify your Clerk and Convex configuration.
+- This repository supports both the dashboard and the Claude/Cursor deployment workflow. Local development primarily targets the dashboard.
+
 ### Write a script from scratch
 
 ```python
