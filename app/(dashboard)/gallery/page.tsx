@@ -16,6 +16,7 @@ import {
   Command as CommandIcon,
   LayoutGrid,
   List,
+  Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getLabelColor, LABEL_COLORS } from "@/lib/label-colors";
@@ -39,8 +40,16 @@ import {
   CommandItem,
   CommandSeparator,
 } from "@/components/ui/command";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { AutomationListRow } from "@/components/AutomationListRow";
 import { OnboardingBanner } from "@/components/OnboardingBanner";
+import { TemplateCard } from "@/components/TemplateCard";
 
 const STORAGE_KEY_VIEW = "floom-gallery-view";
 
@@ -56,6 +65,7 @@ function GalleryContent() {
   const [query, setQuery] = useState("");
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [deployingSlug, setDeployingSlug] = useState<string | null>(null);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem(STORAGE_KEY_VIEW);
@@ -173,6 +183,18 @@ function GalleryContent() {
               <CommandIcon size={11} />K
             </kbd>
           </Button>
+
+          {automations && automations.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0 ml-auto gap-1.5"
+              onClick={() => setTemplatesOpen(true)}
+            >
+              <Layers size={14} />
+              Templates
+            </Button>
+          )}
         </div>
 
         {/* Label filter bar */}
@@ -359,6 +381,31 @@ function GalleryContent() {
           </div>
         </Command>
       </CommandDialog>
+
+      {/* Templates dialog */}
+      <Dialog open={templatesOpen} onOpenChange={setTemplatesOpen}>
+        <DialogContent className="sm:max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Templates</DialogTitle>
+            <DialogDescription>
+              Pick a starter app and customize it.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
+            {templates?.map((t) => (
+              <TemplateCard
+                key={t.slug}
+                name={t.name}
+                description={t.description}
+                category={t.category}
+                icon={t.icon}
+                deploying={deployingSlug === t.slug}
+                onDeploy={() => handleDeployTemplate(t.slug)}
+              />
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
