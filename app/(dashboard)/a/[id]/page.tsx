@@ -298,12 +298,7 @@ export default function AutomationPage({
           <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
             {/* Left: Run form (40%) */}
             <div
-              className={cn(
-                "lg:w-[40%] border-b lg:border-b-0 lg:border-r overflow-y-auto transition-opacity duration-200",
-                !isRunning && (lastRun || activeRunId)
-                  ? "opacity-60"
-                  : "opacity-100"
-              )}
+              className="lg:w-[40%] border-b lg:border-b-0 lg:border-r overflow-y-auto"
             >
               <RunForm
                 manifest={automation.manifest}
