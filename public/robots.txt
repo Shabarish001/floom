@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /gallery
+Disallow: /settings
+Disallow: /welcome
+Disallow: /a/
+Disallow: /sign-in
+Disallow: /sign-up
+
+Sitemap: https://floom.dev/sitemap.xml
